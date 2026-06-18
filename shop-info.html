@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ozon 店铺信息 - 热门类目额度展示原型</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #1890ff;
+      --primary-hover: #40a9ff;
+      --primary-soft: #e6f7ff;
+      --bg-page: #f0f2f5;
+      --bg-white: #fff;
+      --border: #d9d9d9;
+      --border-soft: #f0f0f0;
+      --text: rgba(0,0,0,.85);
+      --text-secondary: rgba(0,0,0,.45);
+      --success: #52c41a;
+      --warning: #faad14;
+      --danger: #ff4d4f;
+      --purple: #722ed1;
+      --cyan: #13c2c2;
+      --sidebar-width: 196px;
+      --top-height: 42px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg-page);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+      font-size: 12px;
+    }
+
+    .layout { min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: var(--top-height);
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      flex-shrink: 0;
+    }
+    .logo { font-weight: 600; margin-right: 22px; display: flex; gap: 8px; align-items: center; }
+    .tabs { flex: 1; height: 100%; display: flex; align-items: flex-end; gap: 4px; padding-top: 6px; }
+    .top-tab { padding: 5px 12px 8px; border-radius: 3px 3px 0 0; background: rgba(255,255,255,.16); color: #fff; }
+    .top-tab.active { background: var(--bg-page); color: var(--primary); font-weight: 600; }
+    .top-right { display: flex; gap: 14px; align-items: center; }
+
+    .body-row { display: flex; flex: 1; min-height: 0; }
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-white);
+      border-right: 1px solid #e8e8e8;
+      padding: 10px 0;
+      flex-shrink: 0;
+    }
+    .menu-title { padding: 8px 20px; color: var(--text-secondary); }
+    .menu-item { padding: 10px 20px 10px 16px; display: flex; align-items: center; gap: 8px; border-right: 3px solid transparent; }
+    .menu-item.active { background: var(--primary-soft); color: var(--primary); border-right-color: var(--primary); }
+    .menu-item.sub { padding-left: 36px; }
+
+    .main { flex: 1; padding: 12px; overflow: auto; }
+    .card { background: var(--bg-white); border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,.03); margin-bottom: 10px; }
+
+    .filter-card { padding: 10px 12px; }
+    .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .channel-select {
+      width: 250px;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0 28px 0 10px;
+      color: rgba(0,0,0,.55);
+      background: #fff;
+      font-family: inherit;
+    }
+    .btn {
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 12px;
+      border-radius: 3px;
+      border: 1px solid transparent;
+      background: #fff;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-default { border-color: var(--border); color: var(--text); }
+    .btn-icon { width: 30px; padding: 0; border-color: var(--border); color: var(--text-secondary); }
+
+    .toolbar {
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .batch-btn {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 3px;
+      border: 1px solid var(--primary);
+      color: #fff;
+      background: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .selected-text { color: var(--text-secondary); }
+    .selected-text strong { color: var(--text); }
+
+    .table-wrap { overflow: auto; }
+    table { width: 100%; min-width: 1360px; border-collapse: collapse; }
+    th {
+      background: #fafafa;
+      color: rgba(0,0,0,.65);
+      text-align: center;
+      font-weight: 600;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border-soft);
+      white-space: nowrap;
+    }
+    td {
+      padding: 11px 8px;
+      text-align: center;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border-soft);
+      white-space: nowrap;
+    }
+    tbody tr.selected td { background: #eaf6ff; }
+    tbody tr:hover td { background: #f5fbff; }
+
+    .checkbox { width: 14px; height: 14px; accent-color: var(--primary); }
+    .company-cell { max-width: 160px; white-space: normal; line-height: 1.5; }
+    .action-link { color: var(--primary); cursor: pointer; }
+    .quota-link { color: var(--primary); cursor: pointer; font-weight: 500; }
+    .quota-value { color: var(--purple); font-weight: 600; }
+    .quota-sub { color: var(--text-secondary); margin-top: 4px; }
+
+    .pagination {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      color: var(--text-secondary);
+    }
+    .page-current {
+      min-width: 24px;
+      height: 24px;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+    }
+    .page-size {
+      height: 26px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0 6px;
+      color: rgba(0,0,0,.65);
+    }
+
+    .modal-mask {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.32);
+      padding: 24px;
+      z-index: 30;
+    }
+    .modal-mask.is-hidden { display: none; }
+    .quota-modal {
+      width: 760px;
+      max-width: calc(100vw - 48px);
+      max-height: calc(100vh - 96px);
+      background: #fff;
+      border-radius: 4px;
+      box-shadow: 0 12px 32px rgba(0,0,0,.18);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close { border: none; background: transparent; color: var(--text-secondary); font-size: 18px; cursor: pointer; }
+    .modal-body { padding: 16px 18px; overflow: auto; }
+    .summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+    .summary-card { border: 1px solid #e8e8e8; border-radius: 3px; padding: 10px 12px; background: #fafafa; }
+    .summary-label { color: var(--text-secondary); margin-bottom: 6px; }
+    .summary-value { font-size: 20px; font-weight: 700; }
+    .detail-table { border: 1px solid var(--border-soft); border-radius: 3px; overflow: hidden; }
+    .detail-table table { min-width: 680px; }
+    .detail-table th, .detail-table td { text-align: center; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid #b7eb8f;
+      color: #389e0d;
+      background: #f6ffed;
+    }
+
+    @media (max-width: 1200px) {
+      .quota-modal { width: 92vw; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header class="topbar">
+      <div class="logo"><i class="fa-solid fa-store"></i> IMS 跨境运营平台</div>
+      <nav class="tabs">
+        <div class="top-tab">首页</div>
+        <div class="top-tab active">商品</div>
+        <div class="top-tab">订单</div>
+        <div class="top-tab">库存</div>
+        <div class="top-tab">财务</div>
+        <div class="top-tab">系统</div>
+      </nav>
+      <div class="top-right"><span><i class="fa-regular fa-bell"></i> 消息</span><span>龚小花</span></div>
+    </header>
+
+    <div class="body-row">
+      <aside class="sidebar">
+        <div class="menu-title">系统配置</div>
+        <div class="menu-item active"><i class="fa-solid fa-shop"></i> 店铺信息</div>
+        <div class="menu-item sub">渠道配置</div>
+        <div class="menu-item sub">账号授权</div>
+        <div class="menu-title">商品管理</div>
+        <div class="menu-item"><i class="fa-solid fa-box-open"></i> 商品管理</div>
+        <div class="menu-item"><i class="fa-solid fa-cloud-arrow-up"></i> 刊登队列</div>
+      </aside>
+
+      <main class="main">
+        <section class="card filter-card">
+          <div class="filter-row">
+            <select class="channel-select">
+              <option>请选择店铺/渠道</option>
+              <option>Ozon-Z23069-ZAS</option>
+            </select>
+            <button class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button>
+            <button class="btn btn-default">重置</button>
+            <button class="btn btn-default">保存快捷键</button>
+            <button class="btn btn-icon" aria-label="筛选"><i class="fa-solid fa-filter"></i></button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="toolbar">
+            <button class="batch-btn">批量操作 <i class="fa-solid fa-caret-down"></i></button>
+            <span class="selected-text">已选 <strong>1</strong> 条数据</span>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:42px;"><input class="checkbox" type="checkbox" checked></th>
+                  <th>渠道ID</th>
+                  <th>渠道名称</th>
+                  <th>公司</th>
+                  <th>每日刊登量</th>
+                  <th>每月刊登量</th>
+                  <th>最大在线商品额度</th>
+                  <th>每日最大下架数量</th>
+                  <th>发货仓</th>
+                  <th>热门类目可用额度</th>
+                  <th>创建时间</th>
+                  <th>更新时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="selected">
+                  <td><input class="checkbox" type="checkbox" checked></td>
+                  <td>26010</td>
+                  <td>Ozon-Z23069-ZAS</td>
+                  <td><div class="company-cell">深圳大天乃至科技有限公司</div></td>
+                  <td>1000</td>
+                  <td>1000000</td>
+                  <td>51300</td>
+                  <td>1000</td>
+                  <td>中墨东莞1号仓库</td>
+                  <td>
+                    <div class="quota-value">19,219</div>
+                    <div class="quota-sub"><span class="quota-link js-open-quota-modal">查看明细</span></div>
+                  </td>
+                  <td>2025-03-21 16:12:23</td>
+                  <td>2026-06-16 13:35:48</td>
+                  <td><span class="action-link">日志</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination">
+            <span>共1条</span>
+            <span class="page-current">1</span>
+            <select class="page-size"><option>20 条/页</option></select>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-mask is-hidden" id="quotaModalMask">
+    <div class="quota-modal" role="dialog" aria-modal="true" aria-labelledby="quotaModalTitle">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="quotaModalTitle">热门类目额度明细</div>
+          <div style="color:var(--text-secondary);margin-top:4px;">Ozon-Z23069-ZAS ｜ 渠道ID：26010</div>
+        </div>
+        <button class="modal-close" id="quotaModalClose" type="button" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="summary-row">
+          <div class="summary-card"><div class="summary-label">附加总额度</div><div class="summary-value" style="color:var(--purple);">21,600</div></div>
+          <div class="summary-card"><div class="summary-label">已用额度</div><div class="summary-value" style="color:var(--warning);">2,381</div></div>
+          <div class="summary-card"><div class="summary-label">可用额度</div><div class="summary-value" style="color:var(--cyan);">19,219</div></div>
+        </div>
+        <div class="detail-table">
+          <table>
+            <thead>
+              <tr>
+                <th>热门类目</th>
+                <th>CategoryId</th>
+                <th>附加总额度</th>
+                <th>已用额度</th>
+                <th>可用额度</th>
+                <th>使用率</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>古董和收藏品</td>
+                <td>17027495</td>
+                <td>10,800</td>
+                <td>85</td>
+                <td>10,715</td>
+                <td>0.8%</td>
+                <td><span class="tag">可用</span></td>
+              </tr>
+              <tr>
+                <td>汽车用品</td>
+                <td>17027490</td>
+                <td>10,800</td>
+                <td>2,296</td>
+                <td>8,504</td>
+                <td>21.3%</td>
+                <td><span class="tag">可用</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const quotaModalMask = document.getElementById('quotaModalMask');
+    const quotaModalClose = document.getElementById('quotaModalClose');
+    const openButtons = document.querySelectorAll('.js-open-quota-modal');
+
+    const openQuotaModal = () => quotaModalMask.classList.remove('is-hidden');
+    const closeQuotaModal = () => quotaModalMask.classList.add('is-hidden');
+
+    openButtons.forEach((button) => button.addEventListener('click', openQuotaModal));
+    quotaModalClose.addEventListener('click', closeQuotaModal);
+    quotaModalMask.addEventListener('click', (event) => {
+      if (event.target === quotaModalMask) closeQuotaModal();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeQuotaModal();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>月度指标趋势图（付款时间）</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f6f8;
+      color: #1a1a1a;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+    p.sub {
+      margin: 0 0 16px;
+      font-size: 0.875rem;
+      color: #666;
+    }
+    #chart {
+      width: 100%;
+      height: 720px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    }
+  </style>
+</head>
+<body>
+  <h1>月度指标趋势图</h1>
+  <p class="sub">横轴：付款时间（每月 1 日）｜上图：总单量与「1 单+」量级指标；下图：更高门槛单量分段指标。可在图例中点击隐藏/显示系列。</p>
+  <div id="chart"></div>
+  <script>
+    const months = [
+      "2025-02", "2025-03", "2025-04", "2025-05", "2025-06", "2025-07",
+      "2025-08", "2025-09", "2025-10", "2025-11", "2025-12", "2026-01",
+      "2026-02", "2026-03", "2026-04"
+    ];
+
+    const 总单量 = [3622, 25908, 48271, 74845, 81726, 86753, 91157, 108126, 186101, 306048, 278100, 241416, 295852, 306042, 258566];
+    const 单1 = [2717, 15991, 31858, 40965, 44792, 40029, 46986, 55130, 75472, 107521, 91914, 92586, 106383, 111775, 89521];
+    const 单1在线 = [2174, 13042, 25814, 33516, 38081, 34311, 40767, 48989, 68635, 99428, 86569, 88264, 101703, 108529, 88195];
+    const 单5 = [29, 449, 625, 1549, 1862, 2503, 2045, 2477, 5359, 9582, 8303, 6744, 8656, 9091, 7452];
+    const 单5在线 = [18, 361, 495, 1249, 1559, 2107, 1729, 2116, 4665, 8690, 7710, 6353, 8244, 8932, 7395];
+    const 单30 = [1, 13, 9, 59, 78, 123, 144, 185, 553, 1041, 1027, 734, 920, 924, 834];
+    const 单30在线 = [1, 11, 5, 46, 68, 104, 121, 160, 440, 923, 962, 709, 905, 909, 828];
+    const 单60 = [0, 1, 1, 6, 4, 26, 42, 52, 134, 302, 344, 241, 309, 276, 263];
+    const 单60在线 = [0, 1, 0, 4, 3, 22, 34, 45, 107, 277, 325, 237, 304, 270, 262];
+    const 单100 = [0, 0, 0, 2, 0, 1, 12, 6, 20, 83, 130, 89, 129, 95, 101];
+    const 单100在线 = [0, 0, 0, 1, 0, 0, 9, 4, 15, 76, 125, 87, 127, 92, 101];
+
+    const chart = echarts.init(document.getElementById("chart"));
+
+    const option = {
+      tooltip: { trigger: "axis", axisPointer: { type: "cross" } },
+      legend: {
+        type: "scroll",
+        top: 0,
+        data: [
+          "总单量", "1单+", "1单+在线",
+          "5单+", "5单+在线", "30单+", "30单+在线", "60单+", "60单+在线", "100单+", "100单+在线"
+        ]
+      },
+      axisPointer: { link: [{ xAxisIndex: "all" }] },
+      grid: [
+        { left: 56, right: 24, top: 72, height: "38%" },
+        { left: 56, right: 24, top: "58%", height: "32%" }
+      ],
+      xAxis: [
+        {
+          type: "category",
+          boundaryGap: false,
+          data: months,
+          axisLabel: { rotate: 30 }
+        },
+        {
+          type: "category",
+          boundaryGap: false,
+          data: months,
+          gridIndex: 1,
+          axisLabel: { rotate: 30 }
+        }
+      ],
+      yAxis: [
+        {
+          type: "value",
+          name: "单量（大）",
+          splitLine: { lineStyle: { type: "dashed" } }
+        },
+        {
+          type: "value",
+          name: "类目数（分段）",
+          gridIndex: 1,
+          splitLine: { lineStyle: { type: "dashed" } }
+        }
+      ],
+      series: [
+        { name: "总单量", type: "line", smooth: true, symbolSize: 6, data: 总单量, yAxisIndex: 0, xAxisIndex: 0, emphasis: { focus: "series" } },
+        { name: "1单+", type: "line", smooth: true, symbolSize: 6, data: 单1, yAxisIndex: 0, xAxisIndex: 0, emphasis: { focus: "series" } },
+        { name: "1单+在线", type: "line", smooth: true, symbolSize: 6, data: 单1在线, yAxisIndex: 0, xAxisIndex: 0, emphasis: { focus: "series" } },
+        { name: "5单+", type: "line", smooth: true, symbolSize: 5, data: 单5, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } },
+        { name: "5单+在线", type: "line", smooth: true, symbolSize: 5, data: 单5在线, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } },
+        { name: "30单+", type: "line", smooth: true, symbolSize: 5, data: 单30, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } },
+        { name: "30单+在线", type: "line", smooth: true, symbolSize: 5, data: 单30在线, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } },
+        { name: "60单+", type: "line", smooth: true, symbolSize: 5, data: 单60, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } },
+        { name: "60单+在线", type: "line", smooth: true, symbolSize: 5, data: 单60在线, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } },
+        { name: "100单+", type: "line", smooth: true, symbolSize: 5, data: 单100, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } },
+        { name: "100单+在线", type: "line", smooth: true, symbolSize: 5, data: 单100在线, yAxisIndex: 1, xAxisIndex: 1, emphasis: { focus: "series" } }
+      ],
+      dataZoom: [
+        { type: "inside", xAxisIndex: [0, 1], start: 0, end: 100 },
+        { type: "slider", xAxisIndex: [0, 1], bottom: 8, start: 0, end: 100 }
+      ]
+    };
+
+    chart.setOption(option);
+    window.addEventListener("resize", () => chart.resize());
+  </script>
+</body>
+</html>

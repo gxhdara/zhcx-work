@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI图片审核 — A+B 筛选与预览优化（原型）</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #1890ff;
+      --primary-dark: #096dd9;
+      --primary-light: #e6f7ff;
+      --success: #52c41a;
+      --warning: #fa8c16;
+      --danger: #ff4d4f;
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --text: #262626;
+      --text-secondary: #595959;
+      --text-muted: #8c8c8c;
+      --border: #d9d9d9;
+      --header-bg: #1890ff;
+      --sidebar-width: 200px;
+      --radius: 4px;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* 顶栏 */
+    .topbar {
+      height: 48px;
+      background: var(--header-bg);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-logo { font-weight: 700; font-size: 15px; }
+    .breadcrumb { font-size: 13px; opacity: 0.9; }
+    .breadcrumb span { opacity: 0.7; margin: 0 6px; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; font-size: 13px; }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; }
+
+    .layout { display: flex; min-height: calc(100vh - 48px); }
+
+    /* 侧栏 */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-title {
+      padding: 12px 16px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 13px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+    .nav-item:hover { background: #fafafa; color: var(--primary); }
+    .nav-item.active { background: var(--primary-light); color: var(--primary); border-right: 3px solid var(--primary); font-weight: 500; }
+    .nav-item i { width: 16px; text-align: center; }
+
+    /* 主内容 */
+    .main { flex: 1; padding: 16px 20px; overflow: auto; }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .page-title { font-size: 16px; font-weight: 600; }
+
+    /* Tab */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+    .tab:hover { color: var(--primary); }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+    .tab .count { color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+
+    .notice {
+      color: var(--danger);
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    /* 搜索区 */
+    .search-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .search-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; color: var(--text-secondary); }
+    .field label.required::after { content: " *"; color: var(--danger); }
+    .field input, .field select {
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      min-width: 140px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15);
+    }
+    .field.error select { border-color: var(--danger); }
+    .error-tip { color: var(--danger); font-size: 12px; display: none; }
+    .field.error .error-tip { display: block; }
+
+    .btn {
+      height: 32px;
+      padding: 0 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); color: #fff; }
+    .btn-warning { background: var(--warning); color: #fff; border-color: var(--warning); }
+    .btn-warning:hover { background: #d46b08; border-color: #d46b08; color: #fff; }
+
+    .action-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+
+    /* 卡片网格 */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .product-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+
+    .card-image-wrap {
+      position: relative;
+      aspect-ratio: 1;
+      background: #fafafa;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .card-image-default,
+    .card-image-hover {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.2s ease;
+    }
+    .card-image-default img,
+    .card-image-hover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .card-image-hover {
+      opacity: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-image-hover .hover-half {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      border-bottom: 1px solid rgba(255,255,255,0.8);
+    }
+    .card-image-hover .hover-half:last-child { border-bottom: none; }
+    .card-image-hover .hover-half.hover-white {
+      background: #fff;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .card-image-hover .hover-half.hover-white img {
+      object-fit: contain;
+      background: #fff;
+      padding: 4px;
+    }
+    .card-image-hover .hover-label {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      z-index: 2;
+    }
+    .card-image-wrap:hover .card-image-default { opacity: 0; }
+    .card-image-wrap:hover .card-image-hover { opacity: 1; }
+
+    .status-dot {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 12px;
+      height: 12px;
+      background: var(--success);
+      border-radius: 50%;
+      border: 2px solid #fff;
+      z-index: 3;
+    }
+
+    .card-body { padding: 10px 12px; }
+    .card-title {
+      font-size: 12px;
+      line-height: 1.4;
+      height: 34px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      margin-bottom: 6px;
+    }
+    .card-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .card-sku { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+    .card-type-tag {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 2px;
+      margin-bottom: 8px;
+    }
+    .tag-ab { background: #e6f7ff; color: #1890ff; }
+    .tag-gift { background: #fff7e6; color: #fa8c16; }
+    .tag-other { background: #f5f5f5; color: #8c8c8c; }
+
+    .btn-pass {
+      width: 100%;
+      height: 28px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+    .btn-pass:hover { background: var(--primary-dark); }
+    .btn-pass:active { transform: scale(0.98); }
+
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-top: 1px solid var(--border);
+    }
+    .btn-page-done {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 8px 32px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .pagination { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+    .pagination button {
+      width: 28px; height: 28px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .pagination .active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* 弹框 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 8px;
+      width: min(900px, 95vw);
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      animation: modalIn 0.25s ease;
+    }
+    .modal.modal-wide {
+      width: min(1280px, 98vw);
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 { font-size: 16px; font-weight: 600; }
+    .modal-close {
+      width: 32px; height: 32px;
+      border: none; background: transparent;
+      cursor: pointer; font-size: 18px;
+      color: var(--text-muted);
+      border-radius: var(--radius);
+      transition: background 0.2s;
+    }
+    .modal-close:hover { background: #f5f5f5; color: var(--text); }
+
+    .modal-sku-bar {
+      padding: 10px 20px;
+      background: #fffbe6;
+      border-bottom: 1px solid #ffe58f;
+      font-size: 13px;
+      color: #ad6800;
+    }
+
+    .modal-body { padding: 20px; overflow: auto; max-height: calc(90vh - 120px); }
+
+    .modal-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .modal-split-triple {
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+    .modal-panel { text-align: center; }
+    .modal-panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .modal-panel-sku {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .modal-panel img {
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .modal-other-split .modal-panel:first-child img,
+    .modal-panel.magazine img {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      object-fit: cover;
+    }
+    .modal-panel.white-bg img {
+      background: #fff;
+    }
+
+    .proto-badge {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      z-index: 999;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      grid-column: 1 / -1;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo"><i class="fa-solid fa-cube"></i> 运营管理系统</div>
+      <div class="breadcrumb">产品运营规则 <span>/</span> AI图片审核</div>
+    </div>
+    <div class="topbar-right">
+      <span><i class="fa-regular fa-bell"></i></span>
+      <span class="avatar"><i class="fa-solid fa-user"></i></span>
+      <span>Admin501874</span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">产品</div>
+      <div class="nav-item"><i class="fa-solid fa-list"></i> 产品运营规则</div>
+      <div class="nav-item"><i class="fa-solid fa-folder"></i> 类目资料</div>
+      <div class="nav-item"><i class="fa-solid fa-tags"></i> 类目属性规则</div>
+      <div class="nav-item"><i class="fa-solid fa-shuffle"></i> 产品分流策略</div>
+      <div class="nav-item active"><i class="fa-solid fa-image"></i> AI图片审核</div>
+      <div class="nav-item"><i class="fa-solid fa-barcode"></i> GTIN管理</div>
+    </aside>
+
+    <main class="main">
+      <div class="page-header">
+        <h1 class="page-title">AI图片审核</h1>
+      </div>
+
+      <div class="tabs">
+        <div class="tab" data-tab="all">所有 <span class="count">(147512)</span></div>
+        <div class="tab active" data-tab="pending">待审核 <span class="count">(58021)</span></div>
+        <div class="tab" data-tab="passed">通过 <span class="count">(68089)</span></div>
+        <div class="tab" data-tab="failed">不通过 <span class="count">(21402)</span></div>
+      </div>
+
+      <p class="notice">数据来源说明：合规结果数据需进入待审核。</p>
+
+      <section class="search-panel">
+        <div class="search-row">
+          <div class="field">
+            <label>SKU</label>
+            <input type="text" placeholder="请输入SKU" id="skuInput" />
+          </div>
+          <div class="field">
+            <label>产品名称</label>
+            <input type="text" placeholder="请输入产品名称" />
+          </div>
+          <div class="field">
+            <label>选择产品分类</label>
+            <select><option>请选择</option></select>
+          </div>
+          <div class="field">
+            <label>选择采集平台SKU</label>
+            <select><option>请选择</option></select>
+          </div>
+          <div class="field">
+            <label>选择审核人</label>
+            <select><option>请选择</option></select>
+          </div>
+          <div class="field" id="imageTypeField">
+            <label class="required">图片类型</label>
+            <select id="imageType">
+              <option value="other">其他</option>
+              <option value="ab" selected>A+B</option>
+              <option value="a_gift">A+赠品</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btnSearch"><i class="fa-solid fa-magnifying-glass"></i> 搜索</button>
+          <button class="btn" id="btnReset"><i class="fa-solid fa-rotate-left"></i> 重置</button>
+          <button class="btn"><i class="fa-regular fa-bookmark"></i> 保存筛选器</button>
+        </div>
+      </section>
+
+      <div class="action-bar">
+        <button class="btn btn-primary"><i class="fa-solid fa-user-check"></i> 分配审核任务</button>
+        <button class="btn btn-warning"><i class="fa-solid fa-xmark"></i> 审核不通过</button>
+      </div>
+
+      <div class="card-grid" id="cardGrid"></div>
+
+      <div class="footer-bar">
+        <button class="btn-page-done">本页审核完成</button>
+        <div class="pagination">
+          <button><i class="fa-solid fa-chevron-left"></i></button>
+          <button class="active">1</button>
+          <button>2</button>
+          <button>3</button>
+          <span>...</span>
+          <button>2901</button>
+          <button><i class="fa-solid fa-chevron-right"></i></button>
+          <select style="height:28px;border:1px solid var(--border);border-radius:4px;padding:0 6px;">
+            <option>20 条/页</option>
+            <option>50 条/页</option>
+          </select>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 图片预览弹框 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="previewModal" role="dialog" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h3 id="modalTitle">图片预览</h3>
+        <button class="modal-close" id="modalClose" aria-label="关闭"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-sku-bar" id="modalSkuBar"></div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="proto-badge">原型演示 · A+B 悬浮双白底图 · 点击三图并列预览</div>
+
+  <script>
+    const MOCK_DATA = [
+      {
+        id: 1, imageType: 'ab',
+        title: '化妆舞会恐怖血腥狰狞兔子面具 万圣节派对装饰',
+        size: '25*20*8', sku: '5136995',
+        preSkuA: '1212121', preSkuB: '23232323',
+        aiImg: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80',
+        listImg: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&q=80',
+        magazineImg: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&q=80',
+        whiteA: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=600&q=80',
+        whiteB: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80'
+      },
+      {
+        id: 2, imageType: 'ab',
+        title: '钓竿支架冰钻冬季钓鱼帐篷配件 户外渔具组合',
+        size: '30*15*12', sku: '5137001',
+        preSkuA: '8899001', preSkuB: '8899002',
+        aiImg: 'https://images.unsplash.com/photo-1544551763-77ef2d00cfcb?w=400&q=80',
+        listImg: 'https://images.unsplash.com/photo-1504280390367-361c6d9d38f8?w=400&q=80',
+        magazineImg: 'https://images.unsplash.com/photo-1544551763-77ef2d00cfcb?w=600&q=80',
+        whiteA: 'https://images.unsplash.com/photo-1544551763-77ef2d00cfcb?w=600&q=80',
+        whiteB: 'https://images.unsplash.com/photo-1504280390367-361c6d9d38f8?w=600&q=80'
+      },
+      {
+        id: 3, imageType: 'a_gift',
+        title: '无线蓝牙耳机 + 充电盒赠品套装 运动防水',
+        size: '18*12*6', sku: '5137012',
+        preSkuA: '6600123', preSkuB: 'GIFT001',
+        aiImg: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80',
+        listImg: 'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=400&q=80',
+        whiteA: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&q=80',
+        whiteB: 'https://images.unsplash.com/photo-1484704849700-f032a568e944?w=600&q=80',
+        magazineImg: null
+      },
+      {
+        id: 4, imageType: 'other',
+        title: '简约陶瓷马克杯 办公室咖啡杯 350ml',
+        size: '12*9*10', sku: '5137020',
+        preSkuA: '7700200', preSkuB: '',
+        aiImg: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&q=80',
+        listImg: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&q=80',
+        whiteA: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=600&q=80',
+        whiteB: null,
+        magazineImg: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=600&q=80'
+      },
+      {
+        id: 5, imageType: 'ab',
+        title: '儿童积木拼装玩具 A+B 双款组合 开发智力',
+        size: '35*25*10', sku: '5137033',
+        preSkuA: '9900111', preSkuB: '9900222',
+        aiImg: 'https://images.unsplash.com/photo-1558060370-9790c8f8e327?w=400&q=80',
+        listImg: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=400&q=80',
+        magazineImg: 'https://images.unsplash.com/photo-1558060370-9790c8f8e327?w=600&q=80',
+        whiteA: 'https://images.unsplash.com/photo-1558060370-9790c8f8e327?w=600&q=80',
+        whiteB: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=600&q=80'
+      },
+      {
+        id: 6, imageType: 'other',
+        title: '不锈钢厨房剪刀 多功能家用剪骨刀',
+        size: '22*8*2', sku: '5137044',
+        preSkuA: '5500444', preSkuB: '',
+        aiImg: 'https://images.unsplash.com/photo-1593618998160-e34014b27539?w=400&q=80',
+        listImg: 'https://images.unsplash.com/photo-1593618998160-e34014b27539?w=400&q=80',
+        whiteA: 'https://images.unsplash.com/photo-1593618998160-e34014b27539?w=600&q=80',
+        whiteB: null,
+        magazineImg: 'https://images.unsplash.com/photo-1593618998160-e34014b27539?w=600&q=80'
+      }
+    ];
+
+    const TYPE_LABELS = { other: '其他', ab: 'A+B', a_gift: 'A+赠品' };
+    const TYPE_TAGS = { other: 'tag-other', ab: 'tag-ab', a_gift: 'tag-gift' };
+
+    let filteredData = [...MOCK_DATA];
+    let currentFilter = 'ab';
+
+    function buildHoverHtml(item) {
+      if (item.imageType === 'ab') {
+        return `
+          <div class="hover-half hover-white">
+            <span class="hover-label">A产品白底图</span>
+            <img src="${item.whiteA}" alt="A产品白底图" loading="lazy" />
+          </div>
+          <div class="hover-half hover-white">
+            <span class="hover-label">B产品白底图</span>
+            <img src="${item.whiteB}" alt="B产品白底图" loading="lazy" />
+          </div>
+        `;
+      }
+      if (item.imageType === 'a_gift') {
+        return `
+          <div class="hover-half hover-white">
+            <span class="hover-label">A产品白底图</span>
+            <img src="${item.whiteA}" alt="A产品白底图" loading="lazy" />
+          </div>
+          <div class="hover-half hover-white">
+            <span class="hover-label">赠品白底图</span>
+            <img src="${item.whiteB}" alt="赠品白底图" loading="lazy" />
+          </div>
+        `;
+      }
+      return `
+        <div class="hover-half">
+          <span class="hover-label">AI生成图</span>
+          <img src="${item.aiImg}" alt="AI生成图" loading="lazy" />
+        </div>
+        <div class="hover-half">
+          <span class="hover-label">列表展示效果</span>
+          <img src="${item.listImg}" alt="列表展示效果" loading="lazy" />
+        </div>
+      `;
+    }
+
+    function renderCards() {
+      const grid = document.getElementById('cardGrid');
+      if (filteredData.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><i class="fa-solid fa-inbox" style="font-size:32px;margin-bottom:12px;display:block;"></i>暂无符合条件的数据</div>';
+        return;
+      }
+      grid.innerHTML = filteredData.map(item => `
+        <article class="product-card" data-id="${item.id}">
+          <div class="card-image-wrap" data-open-modal="${item.id}">
+            <span class="status-dot"></span>
+            <div class="card-image-default">
+              <img src="${item.aiImg}" alt="AI生成图" loading="lazy" />
+            </div>
+            <div class="card-image-hover">
+              ${buildHoverHtml(item)}
+            </div>
+          </div>
+          <div class="card-body">
+            <span class="card-type-tag ${TYPE_TAGS[item.imageType]}">${TYPE_LABELS[item.imageType]}</span>
+            <div class="card-title">${item.title}</div>
+            <div class="card-meta">长*宽*高(CM) ${item.size}</div>
+            <div class="card-sku">${item.sku}</div>
+            <button class="btn-pass" onclick="event.stopPropagation()">审核通过</button>
+          </div>
+        </article>
+      `).join('');
+
+      grid.querySelectorAll('[data-open-modal]').forEach(el => {
+        el.addEventListener('click', () => openModal(Number(el.dataset.openModal)));
+      });
+    }
+
+    function openModal(id) {
+      const item = MOCK_DATA.find(d => d.id === id);
+      if (!item) return;
+
+      const overlay = document.getElementById('modalOverlay');
+      const modal = document.getElementById('previewModal');
+      const skuBar = document.getElementById('modalSkuBar');
+      const body = document.getElementById('modalBody');
+
+      modal.classList.remove('modal-wide');
+
+      if (item.imageType === 'ab') {
+        skuBar.style.display = 'block';
+        skuBar.textContent = `组合前SKU ${item.preSkuA}_${item.preSkuB}`;
+        modal.classList.add('modal-wide');
+        body.innerHTML = `
+          <div class="modal-split modal-split-triple">
+            <div class="modal-panel magazine">
+              <div class="modal-panel-title">杂志图</div>
+              <img src="${item.magazineImg || item.aiImg}" alt="杂志图" />
+            </div>
+            <div class="modal-panel white-bg">
+              <div class="modal-panel-title">A产品白底图</div>
+              <div class="modal-panel-sku">SKU: ${item.preSkuA}</div>
+              <img src="${item.whiteA}" alt="A产品白底图" />
+            </div>
+            <div class="modal-panel white-bg">
+              <div class="modal-panel-title">B产品白底图</div>
+              <div class="modal-panel-sku">SKU: ${item.preSkuB}</div>
+              <img src="${item.whiteB}" alt="B产品白底图" />
+            </div>
+          </div>
+        `;
+      } else if (item.imageType === 'a_gift') {
+        skuBar.style.display = 'block';
+        skuBar.textContent = `组合前SKU ${item.preSkuA}_${item.preSkuB}`;
+        body.innerHTML = `
+          <div class="modal-split">
+            <div class="modal-panel white-bg">
+              <div class="modal-panel-title">产品 A 白底图</div>
+              <div class="modal-panel-sku">SKU: ${item.preSkuA}</div>
+              <img src="${item.whiteA}" alt="产品 A 白底图" />
+            </div>
+            <div class="modal-panel white-bg">
+              <div class="modal-panel-title">赠品白底图</div>
+              <div class="modal-panel-sku">SKU: ${item.preSkuB}</div>
+              <img src="${item.whiteB}" alt="赠品白底图" />
+            </div>
+          </div>
+        `;
+      } else {
+        skuBar.style.display = 'none';
+        body.innerHTML = `
+          <div class="modal-split modal-other-split">
+            <div class="modal-panel">
+              <div class="modal-panel-title">杂志图</div>
+              <img src="${item.magazineImg || item.aiImg}" alt="杂志图" />
+            </div>
+            <div class="modal-panel">
+              <div class="modal-panel-title">白底图</div>
+              <img src="${item.whiteA}" alt="白底图" />
+            </div>
+          </div>
+        `;
+      }
+
+      overlay.classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
+    }
+
+    function doSearch() {
+      const type = document.getElementById('imageType').value;
+      currentFilter = type;
+      filteredData = MOCK_DATA.filter(d => d.imageType === type);
+      renderCards();
+    }
+
+    function doReset() {
+      document.getElementById('skuInput').value = '';
+      document.getElementById('imageType').value = 'ab';
+      currentFilter = 'ab';
+      filteredData = MOCK_DATA.filter(d => d.imageType === 'ab');
+      renderCards();
+    }
+
+    document.getElementById('btnSearch').addEventListener('click', doSearch);
+    document.getElementById('btnReset').addEventListener('click', doReset);
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('modalOverlay').addEventListener('click', e => {
+      if (e.target.id === 'modalOverlay') closeModal();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+
+    // 初始：默认 A+B
+    filteredData = MOCK_DATA.filter(d => d.imageType === 'ab');
+    renderCards();
+  </script>
+</body>
+</html>

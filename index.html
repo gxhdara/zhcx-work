@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZHCX 原型导航</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+      background: #f5f6fa;
+      color: #1a1a2e;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container { max-width: 860px; margin: 0 auto; }
+    header { margin-bottom: 40px; }
+    header h1 { font-size: 28px; font-weight: 700; color: #0d1117; }
+    header p { margin-top: 6px; color: #666; font-size: 14px; }
+
+    .section { margin-bottom: 36px; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e8e8e8;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e4e6eb;
+      border-radius: 10px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.15s, border-color 0.15s, transform 0.1s;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+      border-color: #4f8ef7;
+      transform: translateY(-2px);
+    }
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .card-body { flex: 1; min-width: 0; }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #0d1117;
+      line-height: 1.4;
+    }
+    .card-desc {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-top: 6px;
+      font-weight: 500;
+    }
+    .tag-latest { background: #fff0e6; color: #d4520a; }
+    .tag-stable { background: #e6f4ff; color: #1677ff; }
+    .tag-iter   { background: #f6ffed; color: #389e0d; }
+
+    footer {
+      margin-top: 48px;
+      text-align: center;
+      font-size: 12px;
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🗂️ ZHCX 原型导航</h1>
+    <p>内部产品原型集合 · 点击卡片预览对应页面</p>
+  </header>
+
+  <!-- Ozon 刊登管理 -->
+  <div class="section">
+    <div class="section-title">Ozon · 刊登管理</div>
+    <div class="card-grid">
+      <a class="card" href="shop-info.html">
+        <div class="card-icon" style="background:#fff0e6;">📊</div>
+        <div class="card-body">
+          <div class="card-title">刊登额度控制兼容新规则</div>
+          <div class="card-desc">店铺信息页面原型 · 兼容平台新额度规则</div>
+          <span class="tag tag-latest">最新</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Ozon 促销管理 -->
+  <div class="section">
+    <div class="section-title">Ozon · 促销管理</div>
+    <div class="card-grid">
+      <a class="card" href="promotion-final.html">
+        <div class="card-icon" style="background:#e6f4ff;">🎯</div>
+        <div class="card-body">
+          <div class="card-title">促销管理 · 终版</div>
+          <div class="card-desc">促销管理列表定稿原型</div>
+          <span class="tag tag-stable">终版</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Ozon 商品管理 -->
+  <div class="section">
+    <div class="section-title">Ozon · 商品管理</div>
+    <div class="card-grid">
+      <a class="card" href="product-archive.html">
+        <div class="card-icon" style="background:#f9f0ff;">📦</div>
+        <div class="card-body">
+          <div class="card-title">商品管理 · 一键归档</div>
+          <div class="card-desc">商品批量归档功能原型</div>
+          <span class="tag tag-stable">定稿</span>
+        </div>
+      </a>
+      <a class="card" href="check-picture.html">
+        <div class="card-icon" style="background:#fff7e6;">🖼️</div>
+        <div class="card-body">
+          <div class="card-title">AI 审图 · A+B 图片筛选与预览</div>
+          <div class="card-desc">图片类型筛选与预览优化原型</div>
+          <span class="tag tag-latest">最新</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- 通用 -->
+  <div class="section">
+    <div class="section-title">通用组件</div>
+    <div class="card-grid">
+      <a class="card" href="通用/monthly-performance-trend-chart.html">
+        <div class="card-icon" style="background:#f0f5ff;">📈</div>
+        <div class="card-body">
+          <div class="card-title">月度业绩趋势图表</div>
+          <div class="card-desc">通用数据可视化组件</div>
+          <span class="tag tag-iter">组件</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <footer>zhcx-work · GitHub Pages · 仅供内部评审</footer>
+</div>
+</body>
+</html>

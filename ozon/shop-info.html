@@ -119,7 +119,7 @@
     .selected-text strong { color: var(--text); }
 
     .table-wrap { overflow: auto; }
-    table { width: 100%; min-width: 1360px; border-collapse: collapse; }
+    table { width: 100%; min-width: 1460px; border-collapse: collapse; }
     th {
       background: #fafafa;
       color: rgba(0,0,0,.65);
@@ -145,6 +145,92 @@
     .quota-link { color: var(--primary); cursor: pointer; font-weight: 500; }
     .quota-value { color: var(--purple); font-weight: 600; }
     .quota-sub { color: var(--text-secondary); margin-top: 4px; }
+    .quota-control { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .switch {
+      position: relative;
+      width: 38px;
+      height: 20px;
+      border: none;
+      border-radius: 999px;
+      background: var(--primary);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .18s ease;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 20px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.24);
+      transition: left .18s ease;
+    }
+    .switch.is-off { background: #bfbfbf; }
+    .switch.is-off::after { left: 2px; }
+    .switch-label { color: var(--primary); font-weight: 500; }
+    .switch.is-off + .switch-label { color: var(--text-secondary); }
+    .th-help-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .th-help {
+      width: 15px;
+      height: 15px;
+      border: 1px solid var(--text-secondary);
+      border-radius: 50%;
+      background: #fff;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 13px;
+      text-align: center;
+      padding: 0;
+      font-family: inherit;
+    }
+    .th-help:hover,
+    .th-help.is-active {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .th-tooltip {
+      position: fixed;
+      left: 0;
+      top: 0;
+      transform: translate(-50%, -100%);
+      display: none;
+      width: 260px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      background: rgba(0,0,0,.78);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.5;
+      white-space: normal;
+      text-align: left;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,.18);
+      pointer-events: none;
+    }
+    .th-tooltip::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -5px;
+      transform: translateX(-50%);
+      border-width: 5px 5px 0;
+      border-style: solid;
+      border-color: rgba(0,0,0,.78) transparent transparent;
+    }
+    .th-help-wrap:hover .th-tooltip,
+    .th-help.is-active + .th-tooltip { display: block; }
 
     .pagination {
       display: flex;
@@ -283,6 +369,7 @@
                   <th>渠道名称</th>
                   <th>公司</th>
                   <th>每日刊登量</th>
+                  <th>日额度控制 <span class="th-help-wrap"><button class="th-help js-th-help" type="button" aria-label="查看日额度控制说明" aria-expanded="false">?</button><span class="th-tooltip" role="tooltip">人工：则每日刊登额度不更新，需配置渠道每日刊登额度。</span></span></th>
                   <th>每月刊登量</th>
                   <th>最大在线商品额度</th>
                   <th>每日最大下架数量</th>
@@ -300,6 +387,12 @@
                   <td>Ozon-Z23069-ZAS</td>
                   <td><div class="company-cell">深圳大天乃至科技有限公司</div></td>
                   <td>1000</td>
+                  <td>
+                    <div class="quota-control" title="开启为自动，关闭为人工">
+                      <button class="switch js-quota-switch" type="button" aria-label="日额度控制：自动" aria-pressed="true"></button>
+                      <span class="switch-label">自动</span>
+                    </div>
+                  </td>
                   <td>1000000</td>
                   <td>51300</td>
                   <td>1000</td>
@@ -384,17 +477,65 @@
     const quotaModalMask = document.getElementById('quotaModalMask');
     const quotaModalClose = document.getElementById('quotaModalClose');
     const openButtons = document.querySelectorAll('.js-open-quota-modal');
+    const quotaSwitches = document.querySelectorAll('.js-quota-switch');
+    const helpButtons = document.querySelectorAll('.js-th-help');
 
     const openQuotaModal = () => quotaModalMask.classList.remove('is-hidden');
     const closeQuotaModal = () => quotaModalMask.classList.add('is-hidden');
+    const placeHelpTooltip = (button) => {
+      const tooltip = button.nextElementSibling;
+      if (!tooltip) return;
+      const rect = button.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = Math.max(rect.top - 8, 12);
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    };
 
     openButtons.forEach((button) => button.addEventListener('click', openQuotaModal));
+    helpButtons.forEach((button) => {
+      button.addEventListener('mouseenter', () => placeHelpTooltip(button));
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const nextIsOpen = !button.classList.contains('is-active');
+        helpButtons.forEach((item) => {
+          item.classList.remove('is-active');
+          item.setAttribute('aria-expanded', 'false');
+        });
+        if (nextIsOpen) placeHelpTooltip(button);
+        button.classList.toggle('is-active', nextIsOpen);
+        button.setAttribute('aria-expanded', String(nextIsOpen));
+      });
+    });
+    quotaSwitches.forEach((button) => {
+      button.addEventListener('click', () => {
+        const isAuto = button.getAttribute('aria-pressed') === 'true';
+        const nextIsAuto = !isAuto;
+        const label = button.nextElementSibling;
+        button.setAttribute('aria-pressed', String(nextIsAuto));
+        button.setAttribute('aria-label', `日额度控制：${nextIsAuto ? '自动' : '人工'}`);
+        button.classList.toggle('is-off', !nextIsAuto);
+        if (label) label.textContent = nextIsAuto ? '自动' : '人工';
+      });
+    });
     quotaModalClose.addEventListener('click', closeQuotaModal);
     quotaModalMask.addEventListener('click', (event) => {
       if (event.target === quotaModalMask) closeQuotaModal();
     });
+    document.addEventListener('click', () => {
+      helpButtons.forEach((button) => {
+        button.classList.remove('is-active');
+        button.setAttribute('aria-expanded', 'false');
+      });
+    });
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') closeQuotaModal();
+      if (event.key === 'Escape') {
+        closeQuotaModal();
+        helpButtons.forEach((button) => {
+          button.classList.remove('is-active');
+          button.setAttribute('aria-expanded', 'false');
+        });
+      }
     });
   </script>
 </body>

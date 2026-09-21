@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yandex 原型入口</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#2a3441; --line-soft:#212b36;
+    --text:#e6edf3; --muted:#8b949e; --dim:#6b7684;
+    --blue:#388bfd; --blue-bg:rgba(56,139,253,.14);
+    --amber:#d29922; --green:#3fb950;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    background:var(--bg); color:var(--text); display:flex; flex-direction:column;
+    font-family:"Microsoft YaHei","Noto Sans SC",-apple-system,sans-serif;
+    font-size:13px; line-height:1.6; overflow:hidden;
+  }
+
+  /* ---------- 顶栏 ---------- */
+  .bar{
+    flex-shrink:0; display:flex; align-items:center; gap:16px;
+    min-height:54px; padding:0 18px;
+    background:rgba(13,17,23,.94); border-bottom:1px solid var(--line);
+    backdrop-filter:blur(10px); z-index:10;
+  }
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14px;white-space:nowrap}
+  .brand-mark{
+    display:grid;place-items:center;width:26px;height:26px;border-radius:6px;
+    background:linear-gradient(135deg,#d32f2f,#ffa000);color:#fff;font-size:11px;font-weight:800;
+  }
+  .brand small{color:var(--dim);font-weight:600;font-size:11.5px}
+
+  .tabs{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow-x:auto}
+  .tab{
+    display:flex;align-items:center;gap:7px;white-space:nowrap;
+    padding:6px 12px;border:1px solid var(--line);border-radius:7px;
+    background:var(--panel);color:var(--muted);cursor:pointer;font-size:12.5px;
+    transition:all .15s ease;
+  }
+  .tab:hover{color:var(--text);border-color:#3a4757}
+  .tab.on{color:#cfe2ff;background:var(--blue-bg);border-color:var(--blue);font-weight:700}
+  .tab .dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+  .tab.on .dot{background:var(--blue)}
+  .tab .badge{
+    font-size:10.5px;padding:0 6px;border-radius:20px;
+    background:rgba(63,185,80,.16);color:var(--green);font-weight:700;
+  }
+  .tab.hist .badge{background:rgba(139,148,158,.16);color:var(--muted)}
+
+  .bar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .path{
+    padding:3px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);
+    font-family:Consolas,Monaco,monospace;font-size:11px;color:#9fb0c3;white-space:nowrap;
+    max-width:280px;overflow:hidden;text-overflow:ellipsis;
+  }
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;padding:6px 12px;
+    border:1px solid var(--line);border-radius:7px;background:var(--panel);
+    color:var(--text);cursor:pointer;font-size:12.5px;text-decoration:none;white-space:nowrap;
+    transition:all .15s ease;
+  }
+  .btn:hover{border-color:var(--blue);color:#cfe2ff;background:var(--blue-bg)}
+
+  /* ---------- 舞台 ---------- */
+  .stage{position:relative;flex:1;min-height:0;background:var(--bg)}
+  iframe{display:block;width:100%;height:100%;border:0;background:var(--bg)}
+  .mask{
+    position:absolute;inset:0;display:grid;place-items:center;gap:0;
+    background:var(--bg);color:var(--muted);transition:opacity .25s ease;
+  }
+  .mask.hide{opacity:0;pointer-events:none}
+  .spin{
+    width:26px;height:26px;border-radius:50%;margin:0 auto 10px;
+    border:2px solid var(--line);border-top-color:var(--blue);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .mask p{margin:0;font-size:12.5px;text-align:center}
+
+  @media (max-width:900px){
+    .path{display:none}
+    .brand small{display:none}
+  }
+</style>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="brand-mark">YM</span>
+      <span>Yandex 原型入口<small> · IMS</small></span>
+    </div>
+    <nav class="tabs" id="tabs"></nav>
+    <div class="bar-right">
+      <span class="path" id="path">—</span>
+      <a class="btn" id="openNew" href="#" target="_blank" rel="noopener">新窗口打开 ↗</a>
+    </div>
+  </header>
+
+  <div class="stage">
+    <iframe id="frame" title="原型预览"></iframe>
+    <div class="mask" id="mask">
+      <div>
+        <div class="spin"></div>
+        <p id="maskText">正在加载原型…</p>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ============ 原型清单（新增原型时在这里加一行即可） ============ */
+const PROTOS = [
+  {
+    file: '店铺质量分预警看板.html',
+    name: '店铺质量分预警看板',
+    desc: '店铺 / 仓库质量指数 · 分级预警',
+    badge: '当前版本',
+    hist: false
+  },
+  {
+    file: '店铺质量指数看板.html',
+    name: '店铺质量指数看板',
+    desc: '早期版本 · 单店趋势与构成项',
+    badge: '历史版本',
+    hist: true
+  }
+];
+
+const frame    = document.getElementById('frame');
+const mask     = document.getElementById('mask');
+const maskText = document.getElementById('maskText');
+const pathTag  = document.getElementById('path');
+const openNew  = document.getElementById('openNew');
+const tabs     = document.getElementById('tabs');
+
+/* 取初始原型：支持 index.html#店铺质量指数看板.html 直达 */
+function resolveStart(){
+  const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+  const hit = PROTOS.filter(p => p.file === hash || p.name === hash)[0];
+  return hit || PROTOS[0];
+}
+
+let current = null;
+
+function renderTabs(){
+  tabs.innerHTML = PROTOS.map((p, i) =>
+    '<button type="button" class="tab' + (p.hist ? ' hist' : '') + '" data-i="' + i + '">' +
+      '<span class="dot"></span>' +
+      '<span>' + p.name + '</span>' +
+      '<span class="badge">' + p.badge + '</span>' +
+    '</button>'
+  ).join('');
+
+  tabs.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = PROTOS[+btn.dataset.i];
+      if (p === current) return;
+      location.hash = encodeURIComponent(p.file);
+      load(p);
+    });
+  });
+}
+
+function syncTabs(){
+  tabs.querySelectorAll('.tab').forEach(btn => {
+    btn.classList.toggle('on', PROTOS[+btn.dataset.i] === current);
+  });
+  pathTag.textContent = current ? current.file : '—';
+  pathTag.title = current ? current.file : '';
+  openNew.href = current ? current.file : '#';
+}
+
+function load(p, first){
+  current = p;
+  syncTabs();
+  if (!first){
+    mask.classList.remove('hide');
+    maskText.textContent = '正在加载「' + p.name + '」…';
+  }
+  frame.src = p.file;
+}
+
+/* iframe 的 load 事件在 file:// 下也会触发，用它隐藏加载遮罩 */
+frame.addEventListener('load', () => {
+  mask.classList.add('hide');
+});
+
+/* 兜底：3.5s 后无论如何撤掉遮罩，避免误认为卡死 */
+setTimeout(() => mask.classList.add('hide'), 3500);
+
+renderTabs();
+load(resolveStart(), true);
+
+/* 用户手动刷新 iframe 时同步遮罩状态 */
+window.addEventListener('hashchange', () => {
+  const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+  const hit = PROTOS.filter(p => p.file === hash)[0];
+  if (hit && hit !== current) load(hit);
+});
+</script>
+</body>
+</html>

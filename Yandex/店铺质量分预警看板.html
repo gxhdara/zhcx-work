@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yandex 质量分预警看板 · 店铺 / 仓库</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#161b22;
+    --panel-2:#1b222c;
+    --head:#12252b;
+    --line:#2a3441;
+    --line-soft:#212b36;
+    --text:#e6edf3;
+    --muted:#8b949e;
+    --dim:#6b7684;
+    --green:#3fb950;
+    --green-bg:rgba(63,185,80,.13);
+    --amber:#d29922;
+    --amber-bg:rgba(210,153,34,.13);
+    --red:#f85149;
+    --red-bg:rgba(248,81,73,.14);
+    --grey:#8b949e;
+    --grey-bg:rgba(139,148,158,.10);
+    --blue:#388bfd;
+    --blue-soft:#1f6feb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Microsoft YaHei","Noto Sans SC",-apple-system,sans-serif;
+    font-size:13px; line-height:1.6;
+  }
+  button,select{font:inherit;color:inherit}
+  ::-webkit-scrollbar{height:10px;width:10px}
+  ::-webkit-scrollbar-thumb{background:#303b48;border-radius:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    min-height:56px; padding:0 24px;
+    background:rgba(13,17,23,.92); border-bottom:1px solid var(--line);
+    backdrop-filter:blur(10px);
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;letter-spacing:.2px}
+  .brand-mark{
+    display:grid;place-items:center;width:26px;height:26px;border-radius:6px;
+    background:linear-gradient(135deg,#d32f2f,#ffa000);
+    color:#fff;font-size:11px;font-weight:800;
+  }
+  .brand small{color:var(--dim);font-weight:600;font-size:12px;letter-spacing:0}
+  .topbar-right{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted)}
+  .src-tag{
+    padding:3px 9px;border:1px solid var(--line);border-radius:6px;
+    background:var(--panel);font-family:Consolas,Monaco,monospace;font-size:11px;color:#9fb0c3;
+  }
+  .btn{
+    padding:5px 13px;border-radius:6px;font-size:12px;
+    background:#1f6feb;border:1px solid #2f7ff5;color:#fff;cursor:pointer;
+  }
+  .btn:hover{background:#2b7ef5}
+
+  main{padding:18px 24px 56px;max-width:1560px;margin:0 auto}
+
+  /* ---------- filter row ---------- */
+  .filterbar{
+    display:flex;flex-wrap:wrap;align-items:center;gap:16px;
+    padding:12px 16px;border:1px solid var(--line);border-radius:10px;
+    background:var(--panel);margin-bottom:14px;
+  }
+  .fb-title{font-size:15px;font-weight:800;letter-spacing:.5px}
+  .fb-item{display:flex;align-items:center;gap:7px}
+  .fb-label{color:var(--dim);font-size:12px}
+  select{
+    padding:5px 26px 5px 10px;border-radius:6px;font-size:12px;max-width:320px;
+    background:#1c2430 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><path d='M1 3l4 4 4-4' fill='none' stroke='%238b949e' stroke-width='1.4'/></svg>") no-repeat right 8px center;
+    border:1px solid var(--line); appearance:none; cursor:pointer; outline:none;
+  }
+  select:hover{border-color:#3b4a5a}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto}
+  .chip{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:5px 12px;border-radius:999px;font-size:12px;cursor:pointer;
+    background:var(--panel-2);border:1px solid var(--line);color:#b9c4d0;
+    transition:all .15s;
+  }
+  .chip:hover{border-color:#46586b;color:#fff}
+  .chip i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .chip b{font-family:Consolas,Monaco,monospace;font-size:12px}
+  .chip.on{background:#22303d;border-color:#4a5f75;color:#fff;font-weight:700}
+  .chip.on.c-loose{border-color:#3fb950;background:rgba(63,185,80,.16)}
+  .chip.on.c-cons{border-color:#d29922;background:rgba(210,153,34,.16)}
+  .chip.on.c-conv{border-color:#f85149;background:rgba(248,81,73,.16)}
+  .chip.on.c-none{border-color:#8b949e;background:rgba(139,148,158,.14)}
+
+  /* ---------- layout ---------- */
+  .grid-2{display:grid;grid-template-columns:minmax(300px,.86fr) minmax(0,1.34fr);gap:14px;margin-bottom:14px;align-items:start}
+  @media (max-width:1180px){.grid-2{grid-template-columns:1fr}}
+  .panel{
+    border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden;
+  }
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:11px 15px;border-bottom:1px solid var(--line);background:var(--head);
+  }
+  .panel-head h2{margin:0;font-size:13.5px;font-weight:800;letter-spacing:.3px}
+  .panel-head .hint{color:var(--dim);font-size:11px}
+  .panel-body{padding:14px 15px}
+
+  /* ---------- table ---------- */
+  .tbl-wrap{overflow:auto;max-height:826px}
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
+  thead th{
+    position:sticky;top:0;z-index:2;
+    padding:9px 12px;text-align:left;white-space:nowrap;
+    background:#12252b;color:#9fb0c3;font-weight:700;font-size:12px;
+    border-bottom:1px solid var(--line);
+  }
+  thead th.sortable{cursor:pointer;user-select:none}
+  thead th.sortable:hover{color:#fff}
+  thead th .arrow{color:var(--dim);font-size:10px;margin-left:3px}
+  tbody td{padding:7px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle;white-space:nowrap}
+  tbody tr:hover td{background:rgba(255,255,255,.03)}
+  tr.r-loose td{background:var(--green-bg)}
+  tr.r-cons  td{background:var(--amber-bg)}
+  tr.r-conv  td{background:var(--red-bg)}
+  tr.r-none  td{background:var(--grey-bg)}
+  tr.r-loose:hover td{background:rgba(63,185,80,.2)}
+  tr.r-cons:hover  td{background:rgba(210,153,34,.2)}
+  tr.r-conv:hover  td{background:rgba(248,81,73,.22)}
+  /* 分级左色条挂在「仓库」列（第 2 列）——第 1 列是合并后的店铺单元格 */
+  tr.r-loose td:nth-child(2){box-shadow:inset 3px 0 0 var(--green)}
+  tr.r-cons  td:nth-child(2){box-shadow:inset 3px 0 0 var(--amber)}
+  tr.r-conv  td:nth-child(2){box-shadow:inset 3px 0 0 var(--red)}
+  tr.r-none  td:nth-child(2){box-shadow:inset 3px 0 0 var(--grey)}
+  /* 店铺合并单元格（rowspan = 该店铺仓库数） */
+  tbody tr td.store-td{
+    background:var(--panel-2); border-right:1px solid var(--line);
+    vertical-align:top; padding:11px 13px 11px 15px;
+  }
+  tbody tr:hover td.store-td{background:#1d2630}
+  .store-name{
+    display:block; font-family:Consolas,Monaco,monospace; font-weight:800;
+    font-size:12.5px; letter-spacing:-.2px; color:#e6edf3;
+  }
+  .store-td .sub{font-family:Consolas,Monaco,monospace}
+  .store-tier{
+    display:inline-block; margin-top:7px; padding:1px 8px; border-radius:999px;
+    font-size:10.5px; font-weight:800; white-space:nowrap;
+  }
+  tr.group-start td{border-top:1px solid var(--line)}
+  tbody tr.group-start:first-child td{border-top:none}
+  .mono{font-family:Consolas,Monaco,monospace}
+  .wh-cell{display:block;font-weight:700}
+  .sub{display:block;color:var(--dim);font-size:10.5px;font-weight:400}
+  .date-cell{color:#a7b4c2;font-family:Consolas,Monaco,monospace;font-size:11.5px}
+  .score{font-family:Consolas,Monaco,monospace;font-size:17px;font-weight:800;letter-spacing:-.5px}
+  .score small{font-size:10.5px;font-weight:600;color:var(--dim);margin-left:1px}
+  .s-loose{color:var(--green)}
+  .s-cons{color:var(--amber)}
+  .s-conv{color:var(--red)}
+  .s-none{color:var(--grey)}
+  .rate{display:block;font-family:Consolas,Monaco,monospace;font-weight:700;font-size:12.5px}
+  .rate-bad{color:var(--red)}
+  .rate-warn{color:var(--amber)}
+  .rate-ok{color:#a7b4c2}
+  .cellbar{display:block;position:relative;height:4px;width:78px;margin-top:5px;background:#243140;border-radius:3px}
+  .cellbar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;display:block}
+  .cellbar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:#c9d3e0;border-radius:2px}
+  .tag{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:800;white-space:nowrap;
+  }
+  .t-loose{color:#7ee787;background:rgba(63,185,80,.16);border:1px solid rgba(63,185,80,.4)}
+  .t-cons{color:#e3b341;background:rgba(210,153,34,.16);border:1px solid rgba(210,153,34,.4)}
+  .t-conv{color:#ff7b72;background:rgba(248,81,73,.16);border:1px solid rgba(248,81,73,.42)}
+  .t-none{color:#adbac7;background:rgba(139,148,158,.14);border:1px solid rgba(139,148,158,.36)}
+  .empty{padding:34px 0;text-align:center;color:var(--dim)}
+
+  /* ---------- chart ---------- */
+  .dist{display:flex;align-items:flex-end;justify-content:space-around;gap:8px;height:190px;padding:6px 4px 0}
+  .dist-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+  .dist-val{font-family:Consolas,Monaco,monospace;font-size:16px;font-weight:800;margin-bottom:5px}
+  .dist-bar{width:100%;max-width:78px;border-radius:6px 6px 0 0;transition:height .35s ease}
+  .dist-name{margin-top:8px;font-size:12px;font-weight:700}
+  .dist-cond{margin-top:2px;height:30px;font-size:10px;color:var(--dim);text-align:center;line-height:1.4}
+  .dist-foot{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:12px;padding-top:10px;color:var(--muted);font-size:11.5px}
+
+  /* ---------- rule table ---------- */
+  .note{color:var(--muted);font-size:11.5px;line-height:1.75}
+  .note b{color:#c9d6e2}
+  .note code{
+    font-family:Consolas,Monaco,monospace;background:#1c2430;border:1px solid var(--line);
+    border-radius:4px;padding:1px 5px;font-size:11px;color:#9fb0c3;
+  }
+  .rule{width:100%;border-collapse:collapse;font-size:12.5px}
+  .rule th,.rule td{padding:8px 12px;border-bottom:1px solid var(--line-soft);text-align:left;white-space:normal}
+  .rule th{background:#12252b;color:#9fb0c3;font-size:12px;font-weight:700}
+  .rule tbody tr:last-child td{border-bottom:none}
+  .rule td:first-child{font-weight:800;white-space:nowrap}
+  .foot{max-width:1560px;margin:16px auto 0;padding:0 24px;color:var(--dim);font-size:11px;line-height:1.9}
+  .foot code{font-family:Consolas,Monaco,monospace;color:#9fb0c3}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">YM</span>
+    <span>Yandex 质量分预警看板</span>
+    <small>· 店铺 / 仓库维度</small>
+  </div>
+  <div class="topbar-right">
+    <span class="src-tag">POST /v2/businesses/{businessId}/ratings/quality</span>
+    <span id="syncTime">数据同步于 2026-09-21 13:40</span>
+    <button class="btn" id="refreshBtn">刷新</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- 筛选 -->
+  <div class="filterbar">
+    <span class="fb-title">预警店铺</span>
+    <span class="fb-item">
+      <span class="fb-label">店铺</span>
+      <select id="storeSel"></select>
+    </span>
+    <span class="fb-item">
+      <span class="fb-label">仓库重量档</span>
+      <select id="weightSel">
+        <option value="ALL">全部</option>
+        <option value="LIGHT">小于 500g 仓（商品 ≤490g · 名称无数字后缀）</option>
+        <option value="HEAVY">大于 500g 仓（商品 &gt;490g · 名称带数字后缀）</option>
+      </select>
+    </span>
+    <span class="fb-item">
+      <span class="fb-label">数据日期</span>
+      <select id="dateSel"></select>
+    </span>
+    <div class="chips" id="tierChips"></div>
+  </div>
+
+  <!-- 区块一：仓库质量分明细 -->
+  <section class="panel" style="margin-bottom:14px">
+    <div class="panel-head">
+      <h2>仓库质量分明细（最新计算日）</h2>
+      <span class="hint" id="tblHint"></span>
+    </div>
+    <div class="tbl-wrap">
+      <table id="detailTable">
+        <thead>
+          <tr>
+            <th style="width:186px">店铺名称</th>
+            <th style="width:150px">仓库</th>
+            <th style="width:96px">最新计算日</th>
+            <th class="sortable" data-key="rating" style="width:104px">质量指数<span class="arrow">↕</span></th>
+            <th class="sortable" data-key="late" style="width:148px">迟发率<span class="arrow">↕</span></th>
+            <th class="sortable" data-key="cancel" style="width:148px">取消率<span class="arrow">↕</span></th>
+            <th style="width:132px">分级</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 区块二：分级分布  /  区块三：分级判定规则 -->
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>分级分布（按仓库数）</h2>
+        <span class="hint">阈值 迟发率 3.2% / 指数 98</span>
+      </div>
+      <div class="panel-body">
+        <div class="dist" id="distChart"></div>
+        <div class="dist-foot">
+          <span>仓库总数 <b class="mono" id="distTotal">0</b></span>
+          <span>需收敛 <b class="mono" id="distNeed" style="color:#ff7b72">0</b></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>分级判定规则</h2><span class="hint">判定顺序：收敛 → 宽松 → 保守</span></div>
+      <div style="overflow:auto">
+        <table class="rule">
+          <thead>
+            <tr><th style="width:74px">层级</th><th>判定输入</th></tr>
+          </thead>
+          <tbody>
+            <tr style="background:rgba(63,185,80,.09)">
+              <td style="color:#7ee787">宽松</td>
+              <td>指数 ≥ 99 <b>且</b> 迟发率 ≤ 2%</td>
+            </tr>
+            <tr style="background:rgba(210,153,34,.09)">
+              <td style="color:#e3b341">保守</td>
+              <td>迟发率 2% ~ 3.2%，<b>或</b> 指数 95 ~ 98</td>
+            </tr>
+            <tr style="background:rgba(248,81,73,.09)">
+              <td style="color:#ff7b72">收敛</td>
+              <td>迟发率 &gt; 3.2%，<b>或</b> 指数 &lt; 95</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-body note" style="border-top:1px solid var(--line)">
+        <b>店铺名称</b>：取 ERP 店铺账号名，格式 <code>Yandex-Z&lt;5位编号&gt;-&lt;英文短名&gt;</code>，与订单中心库
+        <code>rb_order_source.order_source_name</code> 一致，可直接用于关联查询。
+        <br><br>
+        <b>取数口径</b>：明细表按店铺分组，<b>店铺名称单元格合并展示（rowspan = 该店铺仓库数）</b>，一个仓库占一行；
+        每个仓库对应接口返回的一个 <code>campaignId</code>，即该店铺在平台侧的一个 FBS campaign。
+        指数取该仓库 <code>ratings[]</code> 中 <code>calculationDate</code> 最新的一条，迟发率取同一日期
+        <code>components[]</code> 中 <code>FBS_LATE_SHIP_RATE</code> 的值，取消率取 <code>FBS_CANCELLATION_RATE</code>。
+        <br><br>
+        <b>排序</b>：为了避免合并单元格被拆散，排序改为<b>店铺整体入口</b>——先按「组内最差的那一行」确定店铺先后，
+        再在店铺内部按同一字段排仓库；因此点表头排序时看到的仍是「风险店铺置顶」，但不会出现同一店铺被拆到两处。
+        <br><br>
+        <b>仓库重量档</b>：判定仓库类型只看<b>仓库名称末尾有无数字后缀</b>（对齐 M-37261）——末尾带数字（<code>Vivet 3</code>、<code>Vivet-2</code>）为<b>大于 500g 仓</b>；
+        末尾无数字（<code>Vivet</code>、<code>3 Vivet</code>）为<b>小于 500g 仓</b>。
+        ⚠️ 注意区分两套数：<code>500g</code> 是<b>仓库名称文案</b>，而商品是否进该仓的阈值是 <b>490g</b>（商品包装重量 <b>≤490g</b> → 小于 500g 仓；<b>&gt;490g</b> → 大于 500g 仓，即 491g 起算），阈值只按包装重量数值判，<b>不按仓库名里的「500g」判</b>。
+        <br><br>
+        <b>未计算</b>：新上线仓库平台尚未产出指数，不计入任何分级统计，需在同步日志中单独跟踪。
+        <br><br>
+        <b>分级用途</b>：三个分级为业务方定义的风险档位，<b>本期仅用于看板标注与筛选，不联动真实 / 虚拟库存的切换</b>，库存动作由后续需求承接。
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<p class="foot">
+  原型说明：店铺名称取 ERP 真实账号格式（<code>Yandex-Z&lt;编号&gt;-&lt;短名&gt;</code>）；演示数据为 <b>14 家店铺 × 2 个仓库</b>（共 28 个 campaignId），
+  指数 / 迟发率 / 取消率为 <b>演示值</b>，均来自
+  <code>POST /v2/businesses/{businessId}/ratings/quality</code>（<code>dateFrom</code> 最早只能取到今天前 30 天）·
+  分级阈值来自业务方定义（指数 ≥99 且迟发 ≤2% 为宽松；迟发 2%~3.2% 或指数 95~98 为保守；迟发 &gt;3.2% 或指数 &lt;95 为收敛）
+</p>
+
+<script>
+/* ============ 配置 ============ */
+const TARGET_LATE = 3.2;   // %
+const TARGET_CANCEL = 2.0; // %
+const BAR_SCALE = 8;       // 进度条量程 %
+
+/* ============ 演示数据：店铺（Yandex-Zxxxxx-短名）→ 2 个仓库(campaignId) ============ */
+const STORES = [
+  { name:'Yandex-Z30001-Rhin',    bizId:2043881, warehouses:[
+      { name:'Rhin',    cid:1001401, date:'2026-09-21', rating:99.4, late:1.30, cancel:0.30 },
+      { name:'Rhin 2',  cid:1001402, date:'2026-09-21', rating:98.3, late:2.10, cancel:0.40 }
+  ]},
+  { name:'Yandex-Z30002-Worr',    bizId:2043892, warehouses:[
+      { name:'Worr',    cid:1001501, date:'2026-09-21', rating:99.8, late:0.90, cancel:0.10 },
+      { name:'Worr 2',  cid:1001502, date:'2026-09-21', rating:98.6, late:2.20, cancel:0.50 }
+  ]},
+  { name:'Yandex-Z30003-Acuti',   bizId:2043903, warehouses:[
+      { name:'Acuti',   cid:1001601, date:'2026-09-21', rating:96.2, late:3.80, cancel:1.20 },
+      { name:'Acuti 3', cid:1001602, date:'2026-09-21', rating:99.0, late:1.70, cancel:0.30 }
+  ]},
+  { name:'Yandex-Z30004-Rachf',   bizId:2043914, warehouses:[
+      { name:'Rachf',   cid:1001701, date:'2026-09-21', rating:96.4, late:4.20, cancel:1.10 },
+      { name:'Rachf 2', cid:1001702, date:'2026-09-21', rating:100.0, late:0.20, cancel:0.00 }
+  ]},
+  { name:'Yandex-Z30005-Sophw',   bizId:2043925, warehouses:[
+      { name:'Sophw',   cid:1001801, date:'2026-09-21', rating:97.5, late:2.60, cancel:0.70 },
+      { name:'Sophw 3', cid:1001802, date:'2026-09-21', rating:99.2, late:1.50, cancel:0.30 }
+  ]},
+  { name:'Yandex-Z30006-Vivet',   bizId:2043936, warehouses:[
+      { name:'Vivet',   cid:1001901, date:'2026-09-21', rating:97.8, late:2.40, cancel:0.60 },
+      { name:'Vivet 3', cid:1001902, date:'2026-09-21', rating:99.2, late:1.10, cancel:0.20 }
+  ]},
+  { name:'Yandex-Z30007-Iquine',  bizId:2043947, warehouses:[
+      { name:'Iquine',   cid:1002001, date:'2026-09-20', rating:94.6, late:3.30, cancel:1.90 },
+      { name:'Iquine 2', cid:1002002, date:'2026-09-20', rating:98.9, late:1.90, cancel:0.40 }
+  ]},
+  { name:'Yandex-Z30009-Peculi',  bizId:2043969, warehouses:[
+      { name:'Peculi',   cid:1002201, date:'2026-09-21', rating:99.6, late:1.40, cancel:0.20 },
+      { name:'Peculi 2', cid:1002202, date:'2026-09-21', rating:98.4, late:2.50, cancel:0.60 }
+  ]},
+  { name:'Yandex-Z30010-Salabi',  bizId:2043970, warehouses:[
+      { name:'Salabi',   cid:1002301, date:'2026-09-21', rating:98.7, late:2.70, cancel:0.60 },
+      { name:'Salabi 2', cid:1002302, date:'2026-09-21', rating:99.9, late:0.60, cancel:0.00 }
+  ]},
+  { name:'Yandex-Z30013-Gochulc', bizId:2044003, warehouses:[
+      { name:'Gochulc',   cid:1002601, date:'2026-09-20', rating:96.8, late:3.50, cancel:1.30 },
+      { name:'Gochulc 2', cid:1002602, date:'2026-09-20', rating:99.5, late:1.20, cancel:0.30 }
+  ]},
+  { name:'Yandex-Z30022-Ransi',   bizId:2044092, warehouses:[
+      { name:'Ransi',   cid:1003501, date:'2026-09-21', rating:99.1, late:1.60, cancel:0.30 },
+      { name:'Ransi 3', cid:1003502, date:'2026-09-21', rating:95.8, late:3.40, cancel:2.40 }
+  ]},
+  { name:'Yandex-Z30048-Xpwdtg',  bizId:2044378, warehouses:[
+      { name:'Xpwdtg',   cid:1006401, date:'2026-09-20', rating:98.0, late:2.30, cancel:0.50 },
+      { name:'Xpwdtg 2', cid:1006402, date:'2026-09-20', rating:99.3, late:1.30, cancel:0.20 }
+  ]},
+  { name:'Yandex-Z30049-Hqbmv',   bizId:2044389, warehouses:[
+      { name:'Hqbmv',   cid:1006501, date:'2026-09-21', rating:99.3, late:1.20, cancel:0.20 },
+      { name:'Hqbmv 2', cid:1006502, date:null,         rating:null, late:null, cancel:null }
+  ]},
+  { name:'Yandex-Z30060-Fgsghhd', bizId:2044600, warehouses:[
+      { name:'Fgsghhd',   cid:1007601, date:'2026-09-21', rating:93.8, late:4.60, cancel:2.80 },
+      { name:'Fgsghhd 2', cid:1007602, date:'2026-09-21', rating:98.5, late:2.80, cancel:0.70 }
+  ]}
+];
+
+/* ============ 分级定义 ============ */
+const TIERS = {
+  loose:  { key:'loose',  name:'宽松', color:'#3fb950', dim:'#7ee787', bg:'rgba(63,185,80,.14)',   cond:'指数 ≥99 且迟发 ≤2%' },
+  cons:   { key:'cons',   name:'保守', color:'#d29922', dim:'#e3b341', bg:'rgba(210,153,34,.14)',  cond:'迟发 2%~3.2% 或指数 95~98' },
+  conv:   { key:'conv',   name:'收敛', color:'#f85149', dim:'#ff7b72', bg:'rgba(248,81,73,.15)',   cond:'迟发 >3.2% 或指数 <95' },
+  none:   { key:'none',   name:'未计算', color:'#6e7781', dim:'#adbac7', bg:'rgba(139,148,158,.12)', cond:'平台尚未产出指数' }
+};
+const TIER_ORDER = ['loose','cons','conv','none'];
+
+/* ============ 状态 ============ */
+let fStore = 'ALL', fWeight = 'ALL', fDate = 'ALL', fTier = 'ALL';
+let sortKey = 'rating', sortDir = 1;
+
+/* ============ 工具 ============ */
+// 仓库重量档：名称末尾是数字 → >500g 仓（对齐 M-37261）
+function weightClass(name){
+  const t = String(name || '').trim();
+  return /\d$/.test(t) ? 'HEAVY' : 'LIGHT';
+}
+function weightLabel(name){ return weightClass(name) === 'HEAVY' ? '大于 500g 仓' : '小于 500g 仓'; }
+// 分级：先判收敛，再判宽松，其余保守
+function tierOf(w){
+  if (w.rating === null || w.rating === undefined) return 'none';
+  if (w.late > TARGET_LATE || w.rating < 95) return 'conv';
+  if (w.rating >= 99 && w.late <= 2) return 'loose';
+  return 'cons';
+}
+const fmt1 = v => (v === null || v === undefined) ? '—' : v.toFixed(1);
+
+/* 拍平成行 */
+const ROWS = [];
+STORES.forEach(s => s.warehouses.forEach(w => {
+  ROWS.push({ store:s.name, bizId:s.bizId, wh:w.name, cid:w.cid, date:w.date,
+              rating:w.rating, late:w.late, cancel:w.cancel,
+              weight:weightClass(w.name), tier:tierOf(w) });
+}));
+const ALL_DATES = [...new Set(ROWS.map(r => r.date).filter(Boolean))].sort().reverse();
+
+/* ============ 筛选 ============ */
+function scopeRows(){                      // 店铺 + 重量档 + 日期（影响全部区块）
+  return ROWS.filter(r =>
+    (fStore === 'ALL' || r.store === fStore) &&
+    (fWeight === 'ALL' || r.weight === fWeight) &&
+    (fDate === 'ALL' || r.date === fDate)
+  );
+}
+function tableRows(){                       // 在 scope 基础上再叠加分级筛选（只影响明细表）
+  return scopeRows().filter(r => fTier === 'ALL' || r.tier === fTier);
+}
+
+/* ============ 渲染：筛选器 ============ */
+function renderSelects(){
+  document.getElementById('storeSel').innerHTML =
+    '<option value="ALL">所有店铺（' + STORES.length + ' 家）</option>' +
+    STORES.map(s => '<option value="' + s.name + '">' + s.name + '（' + s.warehouses.length + ' 个仓库）</option>').join('');
+  document.getElementById('storeSel').value = fStore;
+
+  document.getElementById('dateSel').innerHTML =
+    '<option value="ALL">全部日期</option>' +
+    ALL_DATES.map(d => '<option value="' + d + '">' + d + '</option>').join('');
+  document.getElementById('dateSel').value = fDate;
+}
+
+function renderChips(){
+  const src = scopeRows();
+  const counts = { ALL: src.length };
+  TIER_ORDER.forEach(k => counts[k] = src.filter(r => r.tier === k).length);
+
+  const clsOf = { ALL:'', loose:'c-loose', cons:'c-cons', conv:'c-conv', none:'c-none' };
+  const colorOf = { ALL:'#388bfd', loose:'#3fb950', cons:'#d29922', conv:'#f85149', none:'#6e7781' };
+  const nameOf = { ALL:'全部', loose:'宽松', cons:'保守', conv:'收敛', none:'未计算' };
+
+  document.getElementById('tierChips').innerHTML = ['ALL', ...TIER_ORDER].map(k =>
+    '<button class="chip ' + (fTier === k ? 'on ' + clsOf[k] : '') + '" data-tier="' + k + '">' +
+      '<i style="background:' + colorOf[k] + '"></i>' + nameOf[k] + ' <b>' + counts[k] + '</b>' +
+    '</button>'
+  ).join('');
+}
+
+/* ============ 渲染：明细表 ============ */
+function rateCls(v, target){ return v > target ? 'rate-bad' : (v > target * 0.72 ? 'rate-warn' : 'rate-ok'); }
+
+function rateCell(v, target){
+  if (v === null || v === undefined) return '<span class="rate rate-ok">—</span>';
+  const w = Math.min(100, v / BAR_SCALE * 100);
+  const color = v > target ? '#f85149' : (v > target * 0.72 ? '#d29922' : '#3fb950');
+  return '<span class="rate ' + rateCls(v, target) + '">' + v.toFixed(2) + '%</span>' +
+    '<span class="cellbar"><i style="width:' + w + '%;background:' + color + '"></i>' +
+    '<u style="left:' + (target / BAR_SCALE * 100) + '%"></u></span>';
+}
+
+function renderTable(){
+  /* 1) 按店铺分组 → 2) 组内按当前排序键排仓库 → 3) 组间按组内首值排序（保持分组不被拆散） */
+  const byStore = new Map();
+  tableRows().forEach(r => {
+    if (!byStore.has(r.store)) byStore.set(r.store, []);
+    byStore.get(r.store).push(r);
+  });
+
+  const cmp = (a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (av === null) return 1;                 // 无数据永远沉底
+    if (bv === null) return -1;
+    if (av === bv) return a.wh.localeCompare(b.wh);
+    return (av - bv) * sortDir;
+  };
+
+  const groups = [...byStore.entries()].map(entry => {
+    const store = entry[0];
+    const list = entry[1].slice().sort(cmp);
+    const head = list.filter(r => r[sortKey] !== null)[0] || null;
+    const rated = list.filter(r => r.rating !== null);
+    const worst = rated.slice().sort((a, b) => a.rating - b.rating)[0] || null;
+    return { store: store, list: list, head: head, worst: worst };
+  }).sort((g1, g2) => {
+    if (!g1.head) return 1;
+    if (!g2.head) return -1;
+    const d = (g1.head[sortKey] - g2.head[sortKey]) * sortDir;
+    return d !== 0 ? d : g1.store.localeCompare(g2.store);
+  });
+
+  const tbody = document.querySelector('#detailTable tbody');
+  if (!groups.length){
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">当前筛选条件下没有仓库</td></tr>';
+  } else {
+    tbody.innerHTML = groups.map(g => g.list.map((r, i) => {
+      const t = TIERS[r.tier];
+      let html = '<tr class="r-' + r.tier + (i === 0 ? ' group-start' : '') + '">';
+
+      if (i === 0){                            // 店铺单元格：rowspan 合并该店铺全部仓库
+        const wt = g.worst ? TIERS[tierOf(g.worst)] : TIERS.none;
+        const wtag = g.worst
+          ? ('最低 ' + fmt1(g.worst.rating) + ' · ' + wt.name)
+          : '平台尚未产出指数';
+        html += '<td class="store-td" rowspan="' + g.list.length + '">' +
+          '<span class="store-name">' + g.store + '</span>' +
+          '<span class="sub">businessId ' + r.bizId + '</span>' +
+          '<span class="sub">' + g.list.length + ' 个仓库</span>' +
+          '<span class="store-tier" style="color:' + wt.dim + ';background:' + wt.bg +
+            ';border:1px solid ' + wt.color + '66">' + wtag + '</span>' +
+        '</td>';
+      }
+
+      return html +
+        '<td><span class="wh-cell">' + r.wh + '</span>' +
+            '<span class="sub">' + weightLabel(r.wh) + ' · cid ' + r.cid + '</span></td>' +
+        '<td class="date-cell">' + (r.date || '—') + '</td>' +
+        '<td><span class="score s-' + r.tier + '">' + fmt1(r.rating) + '<small>/100</small></span></td>' +
+        '<td>' + rateCell(r.late, TARGET_LATE) + '</td>' +
+        '<td>' + rateCell(r.cancel, TARGET_CANCEL) + '</td>' +
+        '<td><span class="tag t-' + r.tier + '">' + t.name + '</span></td>' +
+      '</tr>';
+    }).join('')).join('');
+  }
+
+  const total = tableRows().length;
+  document.getElementById('tblHint').textContent =
+    '按店铺分组 · ' + groups.length + ' 家店铺 / ' + total + ' 个仓库' +
+    (fTier === 'ALL' ? '' : '（已筛选）') +
+    ' · 组内按' + ({ rating:'质量指数', late:'迟发率', cancel:'取消率' }[sortKey]) + (sortDir === 1 ? '升序' : '降序');
+}
+
+/* ============ 渲染：分级分布 ============ */
+function renderDist(){
+  const src = scopeRows();
+  const counts = TIER_ORDER.map(k => src.filter(r => r.tier === k).length);
+  const max = Math.max.apply(null, counts.concat([1]));
+  const maxH = 124;
+
+  document.getElementById('distChart').innerHTML = TIER_ORDER.map((k, i) => {
+    const t = TIERS[k];
+    const h = Math.max(6, Math.round(counts[i] / max * maxH));
+    return '<div class="dist-col" data-tier="' + k + '" style="cursor:pointer">' +
+      '<span class="dist-val" style="color:' + t.dim + '">' + counts[i] + '</span>' +
+      '<div class="dist-bar" style="height:' + h + 'px;background:linear-gradient(180deg,' + t.color + ',' + t.color + 'cc)"></div>' +
+      '<span class="dist-name" style="color:' + t.dim + '">' + t.name + '</span>' +
+      '<span class="dist-cond">' + t.cond + '</span>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('distTotal').textContent = src.length;
+  document.getElementById('distNeed').textContent = counts[2];
+}
+
+/* ============ 总渲染 ============ */
+function renderAll(){
+  renderChips();
+  renderTable();
+  renderDist();
+}
+
+/* ============ 交互 ============ */
+document.getElementById('storeSel').addEventListener('change', e => { fStore = e.target.value; renderAll(); });
+document.getElementById('weightSel').addEventListener('change', e => { fWeight = e.target.value; renderAll(); });
+document.getElementById('dateSel').addEventListener('change', e => { fDate = e.target.value; renderAll(); });
+
+document.getElementById('tierChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-tier]');
+  if (!b) return;
+  fTier = b.dataset.tier; renderChips(); renderTable();
+});
+
+document.getElementById('distChart').addEventListener('click', e => {
+  const c = e.target.closest('[data-tier]');
+  if (!c) return;
+  fTier = fTier === c.dataset.tier ? 'ALL' : c.dataset.tier;
+  renderChips(); renderTable();
+});
+
+document.querySelectorAll('#detailTable th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.key;
+    if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+    document.querySelectorAll('#detailTable th.sortable .arrow').forEach(a => a.textContent = '↕');
+    th.querySelector('.arrow').textContent = sortDir === 1 ? '↑' : '↓';
+    renderTable();
+  });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  const t = new Date(), p = v => String(v).padStart(2, '0');
+  document.getElementById('syncTime').textContent =
+    '数据同步于 ' + t.getFullYear() + '-' + p(t.getMonth() + 1) + '-' + p(t.getDate()) + ' ' + p(t.getHours()) + ':' + p(t.getMinutes());
+  renderAll();
+});
+
+renderSelects();
+document.querySelector('#detailTable th.sortable .arrow').textContent = '↑';
+renderAll();
+</script>
+</body>
+</html>

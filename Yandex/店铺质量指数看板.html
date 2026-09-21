@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yandex 店铺质量指数看板</title>
+<style>
+  :root {
+    --primary: #0052ff;
+    --primary-light: #e6f0ff;
+    --success: #00a870;
+    --success-light: #e8f8f0;
+    --warning: #ff9f00;
+    --warning-light: #fff4e5;
+    --danger: #ff4d4f;
+    --danger-light: #ffe8e8;
+    --background: #f5f7fa;
+    --surface: #ffffff;
+    --text-primary: #2c3e50;
+    --text-secondary: #5e6b7a;
+    --text-muted: #8a94a6;
+    --border: #e5e8eb;
+    --shadow: 0 2px 8px rgba(32, 54, 86, 0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--text-primary);
+    background: linear-gradient(180deg, #f8fbff 0, var(--background) 22rem);
+    font-family: "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    line-height: 1.6;
+    font-size: 13px;
+  }
+  button { font: inherit; cursor: pointer; }
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    min-height: 60px; padding: 0 32px;
+    background: rgba(255,255,255,.94);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+  .brand-mark {
+    display: grid; place-items: center; width: 30px; height: 30px;
+    color: #fff; background: linear-gradient(135deg, #0052ff, #36a3ff);
+    border-radius: 8px; font-size: 12px; font-weight: 700;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 16px; color: var(--text-muted); font-size: 12px; }
+  .btn {
+    padding: 6px 14px; color: var(--primary);
+    background: #fff; border: 1px solid var(--primary); border-radius: 6px;
+    font-size: 12px; transition: background .18s;
+  }
+  .btn:hover { background: var(--primary-light); }
+  main { max-width: 1240px; margin: 0 auto; padding: 24px 32px 64px; }
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
+  h2 { font-size: 14px; font-weight: 700; margin: 0 0 14px; }
+  .hero-sub { margin: 0; color: var(--text-secondary); font-size: 12px; }
+  .hero-sub code {
+    padding: 1px 6px; background: #eef2f7; border-radius: 4px;
+    font-family: Consolas, Monaco, monospace; font-size: 11px; color: #38475a;
+  }
+  .hero { margin-bottom: 22px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 18px; }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .filter-label { color: var(--text-muted); font-size: 12px; }
+  .chip {
+    padding: 5px 14px; color: var(--text-secondary);
+    background: #fff; border: 1px solid var(--border); border-radius: 999px;
+    font-size: 12px; transition: all .18s;
+  }
+  .chip:hover { border-color: var(--primary); color: var(--primary); }
+  .chip.on { color: #fff; background: var(--primary); border-color: var(--primary); }
+  .panel {
+    padding: 20px 22px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow);
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .store-card { display: flex; flex-direction: column; gap: 14px; }
+  .store-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .store-name { font-size: 15px; font-weight: 700; margin: 0; }
+  .store-meta { color: var(--text-muted); font-size: 11px; margin: 2px 0 0; font-family: Consolas, Monaco, monospace; }
+  .badge {
+    padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .badge.safe { color: #00805a; background: var(--success-light); }
+  .badge.warn { color: #b06f00; background: var(--warning-light); }
+  .badge.risk { color: #d9363e; background: var(--danger-light); }
+  .score-row { display: flex; align-items: flex-end; gap: 16px; }
+  .score { display: flex; align-items: baseline; gap: 4px; }
+  .score-num { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+  .score-num.safe { color: var(--success); }
+  .score-num.warn { color: var(--warning); }
+  .score-num.risk { color: var(--danger); }
+  .score-unit { color: var(--text-muted); font-size: 13px; }
+  .score-side { flex: 1; min-width: 0; }
+  .score-side .k { color: var(--text-muted); font-size: 11px; margin: 0; }
+  .score-side .v { margin: 2px 0 0; font-size: 13px; font-weight: 700; }
+  .metric { margin-top: 2px; }
+  .metric-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 12px; }
+  .metric-name { color: var(--text-secondary); }
+  .metric-val { font-weight: 700; font-family: Consolas, Monaco, monospace; }
+  .metric-val.over { color: var(--danger); }
+  .metric-val.ok { color: var(--success); }
+  .bar {
+    position: relative; height: 8px; margin-top: 7px;
+    background: #eef2f7; border-radius: 999px; overflow: hidden;
+  }
+  .bar-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; transition: width .3s; }
+  .bar-fill.ok { background: var(--success); }
+  .bar-fill.over { background: var(--danger); }
+  .bar-target {
+    position: absolute; top: -3px; bottom: -3px; width: 2px;
+    background: #38475a; border-radius: 2px;
+  }
+  .bar-target::after {
+    content: attr(data-label); position: absolute; top: -17px; left: 50%;
+    transform: translateX(-50%); color: var(--text-muted);
+    font-size: 10px; white-space: nowrap;
+  }
+  .metric .bar { margin-top: 22px; }
+  .comp-row .bar { margin-top: 22px; }
+  .comp-group { margin-bottom: 6px; }
+  .comp-group-title {
+    margin: 0 0 4px; padding-top: 4px; color: var(--text-muted);
+    font-size: 11px; font-weight: 700;
+  }
+  .metric-foot { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 11px; margin-top: 16px; }
+  .advice {
+    padding: 12px 14px; border-radius: 8px; border-left: 3px solid var(--primary);
+    background: var(--primary-light); font-size: 12px;
+  }
+  .advice.warn { border-left-color: var(--warning); background: var(--warning-light); }
+  .advice.risk { border-left-color: var(--danger); background: var(--danger-light); }
+  .advice-title { font-weight: 700; margin: 0 0 4px; }
+  .advice p { margin: 0; color: var(--text-secondary); line-height: 1.55; }
+  .grid-2 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 940px) { .grid-2 { grid-template-columns: 1fr; } }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; font-size: 11px; color: var(--text-secondary); }
+  .lg { display: flex; align-items: center; gap: 5px; }
+  .lg i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  #trendChart { width: 100%; height: auto; display: block; }
+  .comp-row { padding: 12px 0; border-bottom: 1px dashed var(--border); }
+  .comp-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .comp-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .comp-name { font-size: 12px; font-weight: 700; }
+  .comp-code { color: var(--text-muted); font-size: 10px; font-family: Consolas, Monaco, monospace; display: block; font-weight: 400; }
+  .comp-val { font-weight: 700; font-family: Consolas, Monaco, monospace; font-size: 14px; }
+  .comp-note { color: var(--text-muted); font-size: 11px; margin: 6px 0 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    padding: 9px 10px; text-align: left; color: var(--text-secondary);
+    background: #f7f9fc; border-bottom: 1px solid var(--border); font-weight: 700; white-space: nowrap;
+  }
+  td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #fbfcfe; }
+  .mono { font-family: Consolas, Monaco, monospace; }
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .tag.late { color: #b06f00; background: var(--warning-light); }
+  .tag.cancel { color: #d9363e; background: var(--danger-light); }
+  .ru { color: var(--text-muted); font-size: 11px; display: block; margin-top: 2px; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .callout {
+    display: flex; gap: 10px; padding: 12px 14px; border-radius: 8px;
+    background: #f7f9fc; border: 1px solid var(--border); font-size: 12px;
+  }
+  .callout strong { color: var(--text-primary); }
+  .callout p { margin: 0; color: var(--text-secondary); }
+  .thr-table td { font-family: Consolas, Monaco, monospace; }
+  .thr-table td:first-child { font-family: inherit; font-weight: 700; }
+  .foot { margin-top: 26px; color: var(--text-muted); font-size: 11px; text-align: center; line-height: 1.8; }
+  .foot code { font-family: Consolas, Monaco, monospace; color: #38475a; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">YM</span>
+    <span>Yandex Market 店铺质量指数看板</span>
+  </div>
+  <div class="topbar-right">
+    <span id="syncTime">数据同步于 2026-09-21 13:40</span>
+    <button class="btn" id="refreshBtn">刷新数据</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>质量指数与迟发率监控</h1>
+    <p class="hero-sub">
+      数据来源：<code>POST /v2/businesses/{businessId}/ratings/quality</code>
+      （指数与构成，500 次/小时）· 明细：<code>POST /v2/campaigns/{campaignId}/ratings/quality/details</code>（5000 次/小时）
+    </p>
+    <div class="filters">
+      <div class="filter-group">
+        <span class="filter-label">店铺</span>
+        <div id="storeFilter"></div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">时间范围</span>
+        <button class="chip on" data-range="7">近 7 天</button>
+        <button class="chip" data-range="30">近 30 天</button>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">业务模式</span>
+        <span class="chip on" style="cursor:default">FBS</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="cards" id="storeCards"></section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <h2>质量指数趋势（含 98 分断崖带）</h2>
+      <div class="chart-legend">
+        <span class="lg"><i style="background:#e8f8f0"></i>≥ 98 分：费率 0%</span>
+        <span class="lg"><i style="background:#fff4e5"></i>95–97 分：晚发 10% 起、取消 50%</span>
+        <span class="lg"><i style="background:#ffe8e8"></i>&lt; 95 分：晚发 15% 起、取消 75% 起</span>
+      </div>
+      <div class="chart-legend" id="storeLegend"></div>
+      <svg id="trendChart" viewBox="0 0 620 250" role="img" aria-label="所选店铺的质量指数趋势折线图"></svg>
+    </div>
+
+    <div class="panel">
+      <h2>指数构成项</h2>
+      <div id="components"></div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-bottom:16px">
+    <h2>影响指数的订单明细</h2>
+    <p class="hero-sub" style="margin:-8px 0 14px">
+      来自 <code>/v2/campaigns/{campaignId}/ratings/quality/details</code>，即官方后台「下载报告」中的
+      「未按时发货订单」列表。
+    </p>
+    <div style="overflow-x:auto">
+      <table id="orderTable">
+        <thead>
+          <tr>
+            <th style="width:140px">订单号</th>
+            <th style="width:180px">问题类型</th>
+            <th>平台原始描述</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="panel">
+      <h2>指数档位与费率（官方口径）</h2>
+      <table class="thr-table">
+        <thead>
+          <tr><th>指数档位</th><th>晚发 1 天</th><th>晚发 4 天</th><th>卖家责任取消</th></tr>
+        </thead>
+        <tbody>
+          <tr style="background:#f1fbf6"><td>98–100</td><td>0%</td><td>0%</td><td>0%</td></tr>
+          <tr style="background:#fffaf1"><td>95–97</td><td>10%</td><td>80%</td><td>50%</td></tr>
+          <tr><td>80–94</td><td>15%</td><td>100%</td><td>75%</td></tr>
+          <tr><td>0–79</td><td>25%</td><td>100%</td><td>100%</td></tr>
+          <tr><td>&lt; 40</td><td colspan="3">停店 7 天，商品从橱窗隐藏</td></tr>
+        </tbody>
+      </table>
+      <p class="comp-note" style="margin-top:12px;line-height:1.7">
+        费率按商品展示费的百分比加收：晚发 50~2000 ₽/单，取消 150~5000 ₽/单。
+        指数先落档再精算，落 95–100 档需「晚发率 &lt; 4% 且卖家责任取消率 &lt; 2%」；
+        要精确落在 ≥ 98，取消率为 0 时晚发率须 ≤ 3.2%。
+      </p>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <h2>页面字段与接口映射</h2>
+        <table>
+          <thead><tr><th>页面字段</th><th>接口字段</th></tr></thead>
+          <tbody>
+            <tr><td>质量指数</td><td class="mono">result.campaignRatings[].ratings[].rating</td></tr>
+            <tr><td>计算日期</td><td class="mono">...ratings[].calculationDate</td></tr>
+            <tr><td>迟发率</td><td class="mono">...components[].value<br><span class="ru">componentType = FBS_LATE_SHIP_RATE</span></td></tr>
+            <tr><td>取消率</td><td class="mono">...components[].value<br><span class="ru">componentType = FBS_CANCELLATION_RATE</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <div>
+          <p><strong>两个接口缺口，需在需求里补：</strong></p>
+          <p style="margin-top:6px">
+            1. <strong>明细无时间与金额</strong>——<code>affectedOrders</code> 只返回 orderId / description / componentType，
+            无法直接做「近 7 天恶化归因」和罚款金额测算，需再调订单接口补齐。<br>
+            2. <strong>趋势靠单次区间调用</strong>——<code>dateFrom</code> 最早只能到今天前 30 天，
+            页面做「月环比」必须自己落库存档，不能回查历史。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">
+    原型说明：数据为按接口真实结构构造的演示值 · 指数与构成来自 <code>/v2/businesses/{businessId}/ratings/quality</code>，
+    明细来自 <code>/v2/campaigns/{campaignId}/ratings/quality/details</code> · 费率口径来自 Yandex Market 官方 FBS 帮助文档
+  </p>
+</main>
+
+<script>
+const DAYS = 30;
+const TARGET_LATE = 3.2;
+const TARGET_CANCEL = 2.0;
+const BAR_SCALE = 8;
+
+const STORES = [
+  {
+    campaignId: 1001337,
+    name: 'Rachfier',
+    ratings: [99.8,99.6,99.5,99.4,99.2,99.0,98.9,98.7,98.6,98.4,98.3,98.1,98.0,97.9,97.8,97.6,97.5,97.4,97.2,97.1,97.0,96.9,96.8,96.7,96.6,96.5,96.4,96.4,96.3,96.4],
+    late:    [0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4,2.6,2.7,2.8,2.9,3.0,3.1,3.3,3.4,3.6,3.8,3.9,4.1,4.2],
+    cancel:  [0.2,0.2,0.3,0.3,0.3,0.4,0.4,0.4,0.5,0.5,0.5,0.6,0.6,0.6,0.7,0.7,0.7,0.8,0.8,0.8,0.9,0.9,0.9,1.0,1.0,1.0,1.1,1.1,1.1,1.1],
+    orders: [
+      { orderId: 47021983561, type: 'LATE', ru: 'Отгрузка выполнена позже планового времени' },
+      { orderId: 47021970402, type: 'LATE', ru: 'Заказ перенесен в другую отгрузку' },
+      { orderId: 47021951288, type: 'LATE', ru: 'Отгрузка выполнена позже планового времени' },
+      { orderId: 47021938810, type: 'CANCEL', ru: 'Заказ отменен по вине магазина' },
+      { orderId: 47021914477, type: 'LATE', ru: 'Отгрузка выполнена позже планового времени' },
+      { orderId: 47021890663, type: 'LATE', ru: 'Отгрузка выполнена позже планового времени' }
+    ]
+  },
+  {
+    campaignId: 1002455,
+    name: 'Rachfier 2',
+    ratings: [100,100,99.8,100,100,99.9,100,100,100,99.7,100,100,100,99.9,100,100,100,100,99.8,100,100,100,100,100,99.9,100,100,100,100,100],
+    late:    [0.4,0.3,0.4,0.3,0.2,0.4,0.3,0.3,0.2,0.5,0.3,0.3,0.2,0.3,0.3,0.2,0.3,0.3,0.4,0.3,0.2,0.3,0.3,0.2,0.3,0.3,0.2,0.3,0.3,0.2],
+    cancel:  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    orders: []
+  }
+];
+
+const TYPE_LABEL = {
+  LATE: { text: '晚发货', cls: 'late' },
+  CANCEL: { text: '卖家责任取消', cls: 'cancel' }
+};
+
+let activeStore = 'ALL';
+let activeRange = 7;
+
+function dates(n) {
+  const out = [];
+  const end = new Date('2026-09-21T00:00:00');
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(end);
+    d.setDate(end.getDate() - i);
+    out.push((d.getMonth() + 1) + '/' + d.getDate());
+  }
+  return out;
+}
+
+function series(store, n) {
+  const r = store.ratings.slice(-n);
+  const l = store.late.slice(-n);
+  const c = store.cancel.slice(-n);
+  return { ratings: r, late: l, cancel: c, labels: dates(n) };
+}
+
+function levelOf(rating) {
+  if (rating >= 98) return 'safe';
+  if (rating >= 95) return 'warn';
+  return 'risk';
+}
+
+function adviceOf(rating, late) {
+  if (late > TARGET_LATE || rating < 95) {
+    return {
+      cls: 'risk', title: '建议：收敛为真实库存',
+      text: '晚发率 ' + late.toFixed(1) + '% 已越过 3.2% 安全线（或指数已低于 95），全店关闭虚拟库存，只同步真实可售值。'
+    };
+  }
+  if (rating >= 99 && late <= 2) {
+    return {
+      cls: '', title: '建议：可开虚拟库存',
+      text: '指数 ' + rating.toFixed(1) + '、晚发率 ' + late.toFixed(1) + '%，距断崖充足。虚拟值 = 近 7 天日均销量 × 备货天数。'
+    };
+  }
+  return {
+    cls: 'warn', title: '建议：虚拟值下调',
+    text: '处于 95–98 的观察区间，虚拟值降到「日均销量 × 1~2 天」，并保持到指数回升至 99 以上。'
+  };
+}
+
+function maxOf(store, key, n) { return Math.max.apply(null, store[key].slice(-n)); }
+
+function renderCards() {
+  const list = activeStore === 'ALL' ? STORES : STORES.filter(s => s.name === activeStore);
+  document.getElementById('storeCards').innerHTML = list.map(s => {
+    const d = series(s, activeRange);
+    const rating = d.ratings[d.ratings.length - 1];
+    const late = d.late[d.late.length - 1];
+    const cancel = d.cancel[d.cancel.length - 1];
+    const lv = levelOf(rating);
+    const adv = adviceOf(rating, late);
+    const prev = d.ratings[0];
+    const diff = rating - prev;
+    const fee = rating >= 98 ? '0%' : (rating >= 95 ? '晚发 10% 起 / 取消 50%' : (rating >= 80 ? '晚发 15% 起 / 取消 75%' : '晚发 25% 起 / 取消 100%'));
+
+    const bar = (val, target, name) => {
+      const over = val > target;
+      return '<div class="metric">' +
+        '<div class="metric-head">' +
+          '<span class="metric-name">' + name + '</span>' +
+          '<span class="metric-val ' + (over ? 'over' : 'ok') + '">' + val.toFixed(1) + '%</span>' +
+        '</div>' +
+        '<div class="bar">' +
+          '<div class="bar-fill ' + (over ? 'over' : 'ok') + '" style="width:' + Math.min(100, val / BAR_SCALE * 100) + '%"></div>' +
+          '<div class="bar-target" data-label="目标 ' + target + '%" style="left:' + (target / BAR_SCALE * 100) + '%"></div>' +
+        '</div>' +
+      '</div>';
+    };
+
+    return '<div class="panel store-card">' +
+      '<div class="store-head">' +
+        '<div>' +
+          '<p class="store-name">' + s.name + '</p>' +
+          '<p class="store-meta">campaignId ' + s.campaignId + ' · FBS</p>' +
+        '</div>' +
+        '<span class="badge ' + lv + '">' + (lv === 'safe' ? '安全' : lv === 'warn' ? '警戒' : '危险') + '</span>' +
+      '</div>' +
+      '<div class="score-row">' +
+        '<div class="score"><span class="score-num ' + lv + '">' + rating.toFixed(1) + '</span><span class="score-unit">/100</span></div>' +
+        '<div class="score-side">' +
+          '<p class="k">较区间起点 ' + (diff >= 0 ? '+' : '') + diff.toFixed(1) + '</p>' +
+          '<p class="v">当前费率：' + fee + '</p>' +
+        '</div>' +
+      '</div>' +
+      bar(late, TARGET_LATE, '迟发率') +
+      bar(cancel, TARGET_CANCEL, '卖家责任取消率') +
+      '<div class="advice ' + adv.cls + '">' +
+        '<p class="advice-title">' + adv.title + '</p>' +
+        '<p>' + adv.text + '</p>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+const LINE_COLORS = ['#0052ff', '#00a870', '#ff9f00'];
+
+function renderChart() {
+  const list = activeStore === 'ALL' ? STORES : STORES.filter(x => x.name === activeStore);
+  const first = series(list[0], activeRange);
+  const X0 = 46, X1 = 600, Y0 = 20, Y1 = 200;
+  const y = v => Y1 - (Math.max(88, Math.min(100, v)) - 88) * (Y1 - Y0) / 12;
+  const n = first.ratings.length;
+  const x = i => X0 + (n === 1 ? 0 : i * (X1 - X0) / (n - 1));
+
+  let svg = '';
+  svg += '<rect x="' + X0 + '" y="' + Y0 + '" width="' + (X1 - X0) + '" height="' + (y(98) - Y0) + '" fill="#e8f8f0"/>';
+  svg += '<rect x="' + X0 + '" y="' + y(98) + '" width="' + (X1 - X0) + '" height="' + (y(95) - y(98)) + '" fill="#fff4e5"/>';
+  svg += '<rect x="' + X0 + '" y="' + y(95) + '" width="' + (X1 - X0) + '" height="' + (Y1 - y(95)) + '" fill="#ffe8e8"/>';
+
+  [100, 98, 95, 90].forEach(v => {
+    svg += '<line x1="' + X0 + '" y1="' + y(v) + '" x2="' + X1 + '" y2="' + y(v) + '" stroke="#c9d3e0" stroke-width="0.8" stroke-dasharray="' + (v === 98 ? '5 4' : '0') + '"/>';
+    svg += '<text x="' + (X0 - 8) + '" y="' + y(v) + '" text-anchor="end" dominant-baseline="central" font-size="10" fill="#8a94a6">' + v + '</text>';
+  });
+
+  list.forEach((s, si) => {
+    const d = series(s, activeRange);
+    const color = LINE_COLORS[si % LINE_COLORS.length];
+    const pts = d.ratings.map((v, i) => x(i) + ',' + y(v));
+    svg += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round"/>';
+    const li = n - 1;
+    svg += '<circle cx="' + x(li) + '" cy="' + y(d.ratings[li]) + '" r="4" fill="#fff" stroke="' + color + '" stroke-width="2"/>';
+  });
+
+  svg += '<line x1="' + X0 + '" y1="' + Y1 + '" x2="' + X1 + '" y2="' + Y1 + '" stroke="#c9d3e0" stroke-width="0.8"/>';
+  [0, Math.floor(n / 2), n - 1].forEach(i => {
+    svg += '<text x="' + x(i) + '" y="' + (Y1 + 15) + '" text-anchor="middle" font-size="10" fill="#8a94a6">' + first.labels[i] + '</text>';
+  });
+
+  document.getElementById('trendChart').innerHTML = svg;
+
+  document.getElementById('storeLegend').innerHTML = list.map((s, si) => {
+    const d = series(s, activeRange);
+    const color = LINE_COLORS[si % LINE_COLORS.length];
+    return '<span class="lg"><i style="background:' + color + '"></i>' + s.name + ' 当前 ' + d.ratings[d.ratings.length - 1].toFixed(1) + '</span>';
+  }).join('');
+}
+
+function renderComponents() {
+  const list = activeStore === 'ALL' ? STORES : STORES.filter(x => x.name === activeStore);
+  const showTitle = list.length > 1;
+
+  const block = (s, name, code, val, target, max) => {
+    const over = val > target;
+    return '<div class="comp-row">' +
+      '<div class="comp-top">' +
+        '<div><span class="comp-name">' + name + '</span><span class="comp-code">' + code + '</span></div>' +
+        '<span class="comp-val" style="color:' + (over ? '#ff4d4f' : '#00a870') + '">' + val.toFixed(1) + '%</span>' +
+      '</div>' +
+      '<div class="bar">' +
+        '<div class="bar-fill ' + (over ? 'over' : 'ok') + '" style="width:' + Math.min(100, val / BAR_SCALE * 100) + '%"></div>' +
+        '<div class="bar-target" data-label="目标 ' + target + '%" style="left:' + (target / BAR_SCALE * 100) + '%"></div>' +
+      '</div>' +
+      '<p class="comp-note">' + activeRange + ' 天峰值 ' + max.toFixed(1) + '% · 目标 ≤ ' + target + '% · ' +
+        (over ? '已超标，直接推高罚款档位' : '在目标内，不产生罚款') + '</p>' +
+    '</div>';
+  };
+
+  document.getElementById('components').innerHTML = list.map(s => {
+    const d = series(s, activeRange);
+    const late = d.late[d.late.length - 1];
+    const cancel = d.cancel[d.cancel.length - 1];
+    return '<div class="comp-group">' +
+      (showTitle ? '<p class="comp-group-title">' + s.name + '</p>' : '') +
+      block(s, '迟发率', 'FBS_LATE_SHIP_RATE', late, TARGET_LATE, maxOf(s, 'late', activeRange)) +
+      block(s, '卖家责任取消率', 'FBS_CANCELLATION_RATE', cancel, TARGET_CANCEL, maxOf(s, 'cancel', activeRange)) +
+    '</div>';
+  }).join('');
+}
+
+function renderOrders() {
+  const list = activeStore === 'ALL' ? STORES : STORES.filter(s => s.name === activeStore);
+  const rows = [];
+  list.forEach(s => s.orders.forEach(o => rows.push({ store: s.name, o })));
+  const tbody = document.querySelector('#orderTable tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="color:#8a94a6;text-align:center;padding:22px">该店铺近 7 天内没有影响质量指数的订单</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const t = TYPE_LABEL[r.o.type];
+    return '<tr>' +
+      '<td class="mono">' + r.o.orderId + '</td>' +
+      '<td><span class="tag ' + t.cls + '">' + t.text + '</span><span class="ru">' + r.store + '</span></td>' +
+      '<td>' + r.o.ru + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderFilters() {
+  const names = ['ALL'].concat(STORES.map(s => s.name));
+  document.getElementById('storeFilter').innerHTML = names.map(n =>
+    '<button class="chip' + (n === activeStore ? ' on' : '') + '" data-store="' + n + '" style="margin-right:6px">' +
+    (n === 'ALL' ? '全部店铺' : n) + '</button>'
+  ).join('');
+}
+
+function render() {
+  renderCards();
+  renderChart();
+  renderComponents();
+  renderOrders();
+}
+
+document.getElementById('storeFilter').addEventListener('click', e => {
+  const b = e.target.closest('[data-store]');
+  if (!b) return;
+  activeStore = b.dataset.store;
+  renderFilters();
+  render();
+});
+
+document.querySelectorAll('[data-range]').forEach(b => {
+  b.addEventListener('click', () => {
+    activeRange = Number(b.dataset.range);
+    document.querySelectorAll('[data-range]').forEach(x => x.classList.toggle('on', x === b));
+    render();
+  });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  const t = new Date();
+  const p = v => String(v).padStart(2, '0');
+  document.getElementById('syncTime').textContent =
+    '数据同步于 2026-09-21 ' + p(t.getHours()) + ':' + p(t.getMinutes());
+  render();
+});
+
+renderFilters();
+render();
+</script>
+</body>
+</html>
